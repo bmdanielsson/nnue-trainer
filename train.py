@@ -83,8 +83,7 @@ def create_data_loaders(train_filename, val_filename, features_name, num_workers
   val_size = validation_size
   train_infinite = nnue_dataset.SparseBatchDataset(features_name, train_filename, batch_size, num_workers=num_workers,
                                                    filtered=filtered, random_fen_skipping=random_fen_skipping, device=main_device)
-  val_infinite = nnue_dataset.SparseBatchDataset(features_name, val_filename, batch_size, filtered=filtered,
-                                                   random_fen_skipping=random_fen_skipping, device=main_device)
+  val_infinite = nnue_dataset.SparseBatchDataset(features_name, val_filename, batch_size, filtered=filtered, device=main_device)
   train = DataLoader(nnue_dataset.FixedNumBatchesDataset(train_infinite, (epoch_size + batch_size - 1) // batch_size), batch_size=None, batch_sampler=None)
   val = DataLoader(nnue_dataset.FixedNumBatchesDataset(val_infinite, (val_size + batch_size - 1) // batch_size), batch_size=None, batch_sampler=None)
   return train, val
