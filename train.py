@@ -6,8 +6,10 @@ import torch
 import ranger
 import os.path
 from torch.utils.data import DataLoader, Dataset
+from torch.utils.tensorboard import SummaryWriter
 
 OUTPUT_DIR = 'output'
+LOG_DIR = 'logs'
 LATEST_LAST_PATH = ''
 LATEST_BEST_PATH = ''
 LATEST_EPOCH_PATH = ''
@@ -40,7 +42,19 @@ def save_model(nnue, output_path, epoch, idx, val_loss, new_best, epoch_end):
   
 
 def prepare_output_directory():
-  path = os.getcwd() + '/' + OUTPUT_DIR 
+  path = OUTPUT_DIR
+  if not os.path.exists(path):
+    os.mkdir(path)
+  val = 1
+  while os.path.exists(path+'/'+str(val)):
+    val += 1
+  path = path + '/' + str(val)
+  os.mkdir(path)
+  return path
+  
+  
+def prepare_log_directory():
+  path = LOG_DIR 
   if not os.path.exists(path):
     os.mkdir(path)
   val = 1
@@ -77,6 +91,8 @@ def train_step(nnue, sample, optimizer, lambda_, epoch, idx, num_batches):
   optimizer.step()
   nnue.zero_grad()
   
+  return loss
+  
   
 def create_data_loaders(train_filename, val_filename, features_name, num_workers, batch_size, filtered, random_fen_skipping, main_device, training_size, validation_size):
   epoch_size = training_size
@@ -90,9 +106,13 @@ def create_data_loaders(train_filename, val_filename, features_name, num_workers
 
 
 def main(args):
-  # Create directory to store data in
+  # Create directories to store data and logs in
   output_path = prepare_output_directory()
+  log_path = prepare_log_directory()
     
+  # Create log writer
+  writer = SummaryWriter(log_path)
+  
   # Select which device to use
   if torch.cuda.is_available():
     main_device = 'cuda:0'
@@ -124,27 +144,36 @@ def main(args):
   print(f'Training set: {args.train} ({args.training_size})')
   print(f'Validation set: {args.val} ({args.validation_size})')
   print(f'Batch size: {batch_size}')
+  print(f'Lambda: {args.lambda_}')
   print(f'Smart fen skipping: {args.smart_fen_skipping}')
   print(f'Random fen skipping: {args.random_fen_skipping}')
   print(f'Validation check interval: {args.val_check_interval}')
   print(f'Resuming from: {args.resume_from_model}')
+  print(f'Logs written to: {log_path}')
+  print(f'Data written to: {output_path}')
   print('')
 
   # Main training loop
   best_val_loss = 1000000.0
   num_batches = len(train_data_loader)
-  epoch = 1
+  epoch = 0
+  running_train_loss = 0.0
   while True:
+    
     for k, sample in enumerate(train_data_loader):
-      train_step(nnue, sample, optimizer, args.lambda_, epoch, k, num_batches)
+      train_loss = train_step(nnue, sample, optimizer, args.lambda_, epoch, k, num_batches)
+      running_train_loss += train_loss.item()
       
-      if k > 0 and (k+1)%args.val_check_interval == 0:
+      if k%args.val_check_interval == (args.val_check_interval-1):
         val_loss = calculate_validation_loss(nnue, val_data_loader, args.lambda_)
         new_best = False
         if (val_loss < best_val_loss):
           new_best = True
           best_val_loss = val_loss
         save_model(nnue, output_path, epoch, k, val_loss, new_best, False)
+        writer.add_scalar('training loss', running_train_loss/args.val_check_interval, epoch*num_batches + k)
+        writer.add_scalar('validation loss', val_loss, epoch*num_batches + k)
+        running_train_loss = 0.0
     
     val_loss = calculate_validation_loss(nnue, val_data_loader, args.lambda_)
     new_best = False

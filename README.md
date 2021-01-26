@@ -5,7 +5,7 @@ This repository contains the code used to train NNUE style networks for the Marv
 ```
 python3 -m venv env
 source env/bin/activate
-pip install python-chess torch
+pip install python-chess torch tensorboard
 ```
 
 # Building the data loader
@@ -28,6 +28,12 @@ convert validation.bin validation.binpack
 python train.py training.binpack validation.binpack
 python serialize.py last.pt nn.nnue
 ```
+
+# Logging
+```
+tensorboard --logdir=logs
+```
+Then, go to http://localhost:6006/
 
 # Acknowledgements
 * Data loader and a lot of other code is taken from https://github.com/glinscott/nnue-pytorch
