@@ -9,23 +9,15 @@ pip install python-chess torch tensorboard
 ```
 
 # Building the data loader
-This requires a C++17 compiler.
+This requires the Clang compiler.
 
-Windows:
 ```
-compile_data_loader.bat
-```
-
-Linux/Mac:
-```
-sh compile_data_loader.bat
+make
 ```
 
 # Basic training steps
 ```
-convert training.bin training.binpack
-convert validation.bin validation.binpack
-python train.py training.binpack validation.binpack
+python train.py training.bin validation.bin
 python serialize.py last.pt nn.nnue
 ```
 
@@ -36,6 +28,6 @@ tensorboard --logdir=logs
 Then, go to http://localhost:6006/
 
 # Acknowledgements
-* Data loader and a lot of other code is taken from https://github.com/glinscott/nnue-pytorch
+* Training code is based on https://github.com/glinscott/nnue-pytorch
 * Ranger optimizer is taken from https://github.com/lessw2020/Ranger-Deep-Learning-Optimizer
 

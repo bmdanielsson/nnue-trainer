@@ -8,6 +8,7 @@ import os.path
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter
 
+SAMPLE_SIZE = 40
 OUTPUT_DIR = 'output'
 LOG_DIR = 'logs'
 LATEST_LAST_PATH = ''
@@ -94,14 +95,18 @@ def train_step(nnue, sample, optimizer, lambda_, epoch, idx, num_batches):
   return loss
   
   
-def create_data_loaders(train_filename, val_filename, features_name, num_workers, batch_size, filtered, random_fen_skipping, main_device, training_size, validation_size):
-  epoch_size = training_size
-  val_size = validation_size
-  train_infinite = nnue_dataset.SparseBatchDataset(features_name, train_filename, batch_size, num_workers=num_workers,
-                                                   filtered=filtered, random_fen_skipping=random_fen_skipping, device=main_device)
-  val_infinite = nnue_dataset.SparseBatchDataset(features_name, val_filename, batch_size, filtered=filtered, device=main_device)
-  train = DataLoader(nnue_dataset.FixedNumBatchesDataset(train_infinite, (epoch_size + batch_size - 1) // batch_size), batch_size=None, batch_sampler=None)
-  val = DataLoader(nnue_dataset.FixedNumBatchesDataset(val_infinite, (val_size + batch_size - 1) // batch_size), batch_size=None, batch_sampler=None)
+def create_data_loaders(train_filename, val_filename, batch_size, main_device):
+  epoch_size = int(os.path.getsize(train_filename)/SAMPLE_SIZE)
+  val_size = int(os.path.getsize(val_filename)/SAMPLE_SIZE)
+
+  train_dataset = nnue_dataset.SparseBatchDataset(train_filename, batch_size,
+          (epoch_size + batch_size - 1) // batch_size, device=main_device)
+  val_dataset = nnue_dataset.SparseBatchDataset(val_filename, batch_size,
+          (val_size + batch_size - 1) // batch_size, device=main_device)
+
+  train = DataLoader(train_dataset, batch_size=None, batch_sampler=None)
+  val = DataLoader(val_dataset, batch_size=None, batch_sampler=None)
+
   return train, val
 
 
@@ -119,20 +124,16 @@ def main(args):
   else:
     main_device = 'cpu'
     
-  # Set feature set
-  features = halfkp
-  features_name = features.Features.name
-
   # Configure batch size
   batch_size = args.batch_size
   if batch_size <= 0:
     batch_size = 8192 if torch.cuda.is_available() else 128
   
   # Create data loaders
-  train_data_loader, val_data_loader = create_data_loaders(args.train, args.val, features_name, args.num_workers, batch_size, args.smart_fen_skipping, args.random_fen_skipping, main_device, args.training_size, args.validation_size)
+  train_data_loader, val_data_loader = create_data_loaders(args.train, args.val, batch_size, main_device)
   
   # Create model
-  nnue = M.NNUE(feature_set=features.Features()).to(main_device)
+  nnue = M.NNUE(feature_set=halfkp.Features()).to(main_device)
   if args.resume_from_model:
     nnue.load_state_dict(torch.load(args.resume_from_model))
 
@@ -141,12 +142,10 @@ def main(args):
   scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=1, verbose=True, min_lr=1e-6)
 
   # Print configuration info
-  print(f'Training set: {args.train} ({args.training_size})')
-  print(f'Validation set: {args.val} ({args.validation_size})')
+  print(f'Training set: {args.train}')
+  print(f'Validation set: {args.val}')
   print(f'Batch size: {batch_size}')
   print(f'Lambda: {args.lambda_}')
-  print(f'Smart fen skipping: {args.smart_fen_skipping}')
-  print(f'Random fen skipping: {args.random_fen_skipping}')
   print(f'Validation check interval: {args.val_check_interval}')
   print(f'Resuming from: {args.resume_from_model}')
   print(f'Logs written to: {log_path}')
@@ -191,13 +190,8 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Train a NNUE style network.')
   parser.add_argument('train', help='Training data (.bin or .binpack)')
   parser.add_argument('val', help='Validation data (.bin or .binpack)')
-  parser.add_argument('--training-size', required=True, type=int, help='Number of training samples')
-  parser.add_argument('--validation-size', required=True, type=int, help='Number of validation samples')
   parser.add_argument('--lambda', default=1.0, type=float, dest='lambda_', help='lambda=1.0 = train on evaluations, lambda=0.0 = train on game results, interpolates between (default=1.0).')
-  parser.add_argument('--num-workers', default=1, type=int, help='Number of worker threads to use for data loading. Currently only works well for binpack.')
   parser.add_argument('--batch-size', default=-1, type=int, help='Number of positions per batch / per iteration. Default on GPU = 8192 on CPU = 128.')
-  parser.add_argument('--smart-fen-skipping', action='store_true', help='If enabled positions that are bad training targets will be skipped during loading. Default: False')
-  parser.add_argument('--random-fen-skipping', default=0, type=int, help='skip fens randomly on average random_fen_skipping before using one.')
   parser.add_argument('--resume-from-model', help='Initializes training using the weights from the given .pt model')
   parser.add_argument('--val-check-interval', default=2000, type=int, help='How often to check validation loss')
   args = parser.parse_args()
