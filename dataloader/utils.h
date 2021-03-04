@@ -57,7 +57,9 @@ typedef struct {
 } event_t;
 #endif
 
-uint32_t get_file_size(char *file);
+#define FILE_SIZE_ERROR UINT64_MAX
+
+uint64_t get_file_size(char *file);
 
 void sleep_ms(int ms);
 

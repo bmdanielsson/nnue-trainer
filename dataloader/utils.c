@@ -34,27 +34,29 @@
 
 #include "utils.h"
 
-uint32_t get_file_size(char *file)
+uint64_t get_file_size(char *file)
 {
     assert(file != NULL);
 
 #ifdef WINDOWS
     HANDLE fh;
-    DWORD  size;
+    LARGE_INTEGER size;
 
     fh = CreateFile(file, GENERIC_READ, 0, NULL, OPEN_EXISTING,
                     FILE_ATTRIBUTE_NORMAL, NULL);
-    size = GetFileSize(fh, NULL);
+	if (!GetFileSizeEx(fh, &size)) {
+		return FILE_SIZE_ERROR;
+	}
     CloseHandle(fh);
 
-    return (uint32_t)size;
+    return (uint64_t)size.QuadPart;
 #else
     struct stat sb;
 
     if (stat(file, &sb) != 0) {
-        return 0xFFFFFFFF;
+        return FILE_SIZE_ERROR;
     }
-    return (uint32_t)sb.st_size;
+    return (uint64_t)sb.st_size;
 #endif
 }
 

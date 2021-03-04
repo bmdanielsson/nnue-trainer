@@ -32,11 +32,11 @@
 
 struct stream {
     FILE *fp;
-    uint32_t iter;
+    uint64_t iter;
 
     int batch_size;
-    uint32_t nsamples;
-    uint32_t nread;
+    uint64_t nsamples;
+    uint64_t nread;
 
     thread_t thread;
     mutex_t stream_lock;

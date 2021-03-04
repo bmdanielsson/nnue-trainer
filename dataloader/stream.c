@@ -23,6 +23,7 @@
 #include <string.h>
 #include <assert.h>
 #include <time.h>
+#include <inttypes.h>
 
 #include "stream.h"
 
@@ -90,14 +91,14 @@ static int read_samples(struct stream *stream, struct sfen *buffer, int to_read)
 struct stream* stream_create(char *filename, int batch_size)
 {
     struct stream *stream;
-    uint32_t      size;
+    uint64_t      size;
 
     /* Seed RNG */
     srand(time(NULL));
 
     /* Get the size of the data file */
     size = get_file_size((char*)filename);
-    if (size == 0xFFFFFFFF) {
+    if (size == FILE_SIZE_ERROR) {
         return NULL;
     }
     if (size%SFEN_BIN_SIZE != 0) {
@@ -107,16 +108,16 @@ struct stream* stream_create(char *filename, int batch_size)
     /* Create stream */
     stream = malloc(sizeof(struct stream));
     stream->fp = fopen(filename, "rb");
-    stream->iter = 0;
+    stream->iter = 0ULL;
     stream->batch_size = batch_size;
     stream->nsamples = size/SFEN_BIN_SIZE;
-    stream->nread = 0;
+    stream->nread = 0ULL;
     mutex_init(&stream->stream_lock);
     event_init(&stream->write_event);
     event_init(&stream->read_event);
     stream->exit = false;
     stream->nentries = 0; 
-
+	
     /* Start worker thread */
     thread_create(&stream->thread, worker_thread_func, stream);
 

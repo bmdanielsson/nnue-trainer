@@ -146,7 +146,7 @@ EXPORT struct sparse_batch* CDECL fetch_next_sparse_batch(struct stream *stream)
     }
 
     /* Read samples */
-    samples = malloc(stream->batch_size*sizeof(struct sfen)); 
+    samples = malloc(stream->batch_size*sizeof(struct sfen));
     nsamples = stream_get_samples(stream, samples);
     assert(nsamples > 0);
     assert((uint32_t)nsamples <= (stream->nread - stream->nsamples));
