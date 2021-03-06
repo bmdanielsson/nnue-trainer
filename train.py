@@ -111,26 +111,33 @@ def create_data_loaders(train_filename, val_filename, batch_size, main_device):
 
 
 def main(args):
-  # Create directories to store data and logs in
-  output_path = prepare_output_directory()
-  log_path = prepare_log_directory()
-    
-  # Create log writer
-  writer = SummaryWriter(log_path)
-  
   # Select which device to use
   if torch.cuda.is_available():
     main_device = 'cuda:0'
   else:
     main_device = 'cpu'
     
-  # Configure batch size
-  batch_size = args.batch_size
-  if batch_size <= 0:
-    batch_size = 8192 if torch.cuda.is_available() else 128
+  # Create directories to store data and logs in
+  output_path = prepare_output_directory()
+  log_path = prepare_log_directory()
+ 
+  # Print configuration info
+  print(f'Device: {main_device}')
+  print(f'Training set: {args.train}')
+  print(f'Validation set: {args.val}')
+  print(f'Batch size: {args.batch_size}')
+  print(f'Lambda: {args.lambda_}')
+  print(f'Validation check interval: {args.val_check_interval}')
+  print(f'Resuming from: {args.resume_from_model}')
+  print(f'Logs written to: {log_path}')
+  print(f'Data written to: {output_path}')
+  print('')
+   
+  # Create log writer
+  writer = SummaryWriter(log_path)
   
   # Create data loaders
-  train_data_loader, val_data_loader = create_data_loaders(args.train, args.val, batch_size, main_device)
+  train_data_loader, val_data_loader = create_data_loaders(args.train, args.val, args.batch_size, main_device)
   
   # Create model
   nnue = M.NNUE(feature_set=halfkp.Features()).to(main_device)
@@ -140,17 +147,6 @@ def main(args):
   # Configure optimizer
   optimizer = ranger.Ranger(nnue.parameters(), lr=1e-3)
   scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=1, verbose=True, min_lr=1e-6)
-
-  # Print configuration info
-  print(f'Training set: {args.train}')
-  print(f'Validation set: {args.val}')
-  print(f'Batch size: {batch_size}')
-  print(f'Lambda: {args.lambda_}')
-  print(f'Validation check interval: {args.val_check_interval}')
-  print(f'Resuming from: {args.resume_from_model}')
-  print(f'Logs written to: {log_path}')
-  print(f'Data written to: {output_path}')
-  print('')
 
   # Main training loop
   best_val_loss = 1000000.0
@@ -190,10 +186,10 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Train a NNUE style network.')
   parser.add_argument('train', help='Training data (.bin or .binpack)')
   parser.add_argument('val', help='Validation data (.bin or .binpack)')
-  parser.add_argument('--lambda', default=1.0, type=float, dest='lambda_', help='lambda=1.0 = train on evaluations, lambda=0.0 = train on game results, interpolates between (default=1.0).')
-  parser.add_argument('--batch-size', default=-1, type=int, help='Number of positions per batch / per iteration. Default on GPU = 8192 on CPU = 128.')
+  parser.add_argument('--lambda', default=1.0, type=float, dest='lambda_', help='lambda=1.0 = train on evaluations, lambda=0.0 = train on game results, interpolates between (default=1.0)')
+  parser.add_argument('--batch-size', default=8192, type=int, help='Number of positions per batch / per iteration (default=8192)')
+  parser.add_argument('--val-check-interval', default=2000, type=int, help='How often to check validation loss (default=2000)')
   parser.add_argument('--resume-from-model', help='Initializes training using the weights from the given .pt model')
-  parser.add_argument('--val-check-interval', default=2000, type=int, help='How often to check validation loss')
   args = parser.parse_args()
   
   main(args)
