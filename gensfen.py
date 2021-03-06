@@ -244,6 +244,8 @@ def play_game(fh, pos_left, args):
     options['Threads'] = 1
     if 'UseNNUE' in engine.options:
         options['UseNNUE'] = args.use_nnue
+        if args.eval_file:
+            options['EvalFile'] = args.eval_file
     if args.syzygy_path and 'SyzygyPath' in engine.options:
         options['SyzygyPath'] = args.syzygy_path
     engine.configure(options)
@@ -471,6 +473,7 @@ if __name__ == "__main__":
                     help='the path to syzygy tablebases')
     parser.add_argument('--use_nnue', action='store_true',
                     help='flag indicating if NNUE evaluation should be used')
+    parser.add_argument('--eval_file', help='path to the NNUE file')
     parser.add_argument('--format', choices=['plain', 'bin'], default='bin',
                     help='the output format')
     parser.add_argument('--seed', type=int,
