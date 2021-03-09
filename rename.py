@@ -18,7 +18,11 @@ def get_sha1(file_path):
 
 def main(args):
     sha1 = get_sha1(args.source)
-    new_file_path = os.path.dirname(args.source) + '/' + f'net-{sha1[:7]}.nnue'
+    dirname = os.path.dirname(args.source)
+    if dirname:
+        new_file_path = dirname + '/' + f'net-{sha1[:7]}.nnue'
+    else:
+        new_file_path = f'net-{sha1[:7]}.nnue'
       
     print(f'SHA1: {sha1}')
     print(f'Name: {new_file_path}')
