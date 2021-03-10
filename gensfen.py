@@ -458,30 +458,30 @@ if __name__ == "__main__":
     parser.add_argument('-e', '--engine', help='the path to the engine',
                     required=True)
     parser.add_argument('-t', '--nthreads', type=int, default='1',
-                    help='the number of threads to use')
-    parser.add_argument('-n', '--npositions', type=int, default='30000000',
-                    help='the number of positions to generate')
+                    help='the number of threads to use (default 1)')
+    parser.add_argument('-n', '--npositions', type=int, default='100000000',
+                    help='the number of positions to generate (default 100000000)')
     parser.add_argument('-o', '--output', type=str,
                     help='the name of the output file', required=True)
-    parser.add_argument('-r', '--random_plies', type=int, default='10',
-                    help='the number of random plies at the beginning')
-    parser.add_argument('-l', '--eval_limit', type=int, default='19000',
-                    help='the highest evaluation that is accepted')
+    parser.add_argument('-r', '--random_plies', type=int, default='16',
+                    help='the number of random plies at the beginning (default 16)')
+    parser.add_argument('-l', '--eval_limit', type=int, default='10000',
+                    help='the highest evaluation that is accepted (default 10000)')
     parser.add_argument('-a', '--hash', type=int, default='128',
-                    help='the amount of hash the engine should use (in MB)')
+                    help='the amount of hash the engine should use in MB (default 128)')
     parser.add_argument('-s', '--syzygy_path', type=str,
                     help='the path to syzygy tablebases')
     parser.add_argument('--use_nnue', action='store_true',
                     help='flag indicating if NNUE evaluation should be used')
     parser.add_argument('--eval_file', help='path to the NNUE file')
     parser.add_argument('--format', choices=['plain', 'bin'], default='bin',
-                    help='the output format')
+                    help='the output format (default bin)')
     parser.add_argument('--seed', type=int,
                     help='seed to use for random number generator')
     parser.add_argument('--use_frc', action='store_true',
                     help="Include Chess960 starting positions")
     parser.add_argument('--frc_prob', type=float, default=0.2,
-                    help="Probability of using a Chess960 starting position")
+                    help="Probability of using a Chess960 starting position (default 0.2)")
 
     args = parser.parse_args()
 
