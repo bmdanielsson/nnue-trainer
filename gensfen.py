@@ -8,6 +8,7 @@ import shutil
 import time
 import chess
 import chess.engine
+import chess.syzygy
 
 import numpy as np
 
@@ -22,8 +23,6 @@ MAX_PLY = 400
 MIN_DRAW_PLY = 80
 DRAW_SCORE = 10
 DRAW_COUNT = 10
-RESIGN_SCORE = 1000
-RESIGN_COUNT = 10
 
 HUFFMAN_TABLE = [np.uint8(0),    # No piece (1 bit)
                  np.uint8(1),    # Pawn (4 bits)
@@ -169,32 +168,32 @@ def encode_move(board, move):
 # padding (8 bits)
 def write_sfen_bin(fh, sfen, result):
     board = chess.Board(fen=sfen['fen'])
-    pov_result = result
+    stm_result = result
     if sfen['score'].turn == chess.BLACK:
-        pov_result = -1*pov_result
-    pov_score = sfen['score'].pov(sfen['score'].turn).score()
+        stm_result = -1*stm_result
+    stm_score = sfen['score'].pov(sfen['score'].turn).score()
 
     pos_data = encode_position(board)
     pos_data.tofile(fh)
-    np.int16(pov_score).tofile(fh)
+    np.int16(stm_score).tofile(fh)
     move_data = encode_move(board, sfen['move'])
     move_data.tofile(fh)
     np.uint16(sfen['ply']).tofile(fh)
-    np.int8(pov_result).tofile(fh)
+    np.int8(stm_result).tofile(fh)
     np.uint8(0xFF).tofile(fh)
 
 
 def write_sfen_plain(fh, sfen, result):
-    pov_result = result
+    stm_result = result
     if sfen['score'].turn == chess.BLACK:
-        pov_result = -1*pov_result
-    pov_score = sfen['score'].pov(sfen['score'].turn).score()
+        stm_result = -1*stm_result
+    stm_score = sfen['score'].pov(sfen['score'].turn).score()
 
     fh.write('fen ' + sfen['fen'] + '\n')
     fh.write('move ' + sfen['move'].uci() + '\n')
-    fh.write('score ' + str(pov_score) + '\n')
+    fh.write('score ' + str(stm_score) + '\n')
     fh.write('ply ' + str(sfen['ply']) + '\n')
-    fh.write('result ' + str(pov_result) + '\n')
+    fh.write('result ' + str(stm_result) + '\n')
     fh.write('e\n')
 
 
@@ -228,7 +227,7 @@ def is_quiet(board, move):
     return not board.is_capture(move)
 
 
-def play_game(fh, pos_left, args):
+def play_game(fh, tablebases, pos_left, args):
     # Setup a new board
     board = setup_board(args)
 
@@ -258,12 +257,28 @@ def play_game(fh, pos_left, args):
         limit.nodes = args.nodes
 
     # Let the engine play against itself and a record all positions
+    in_tablebase_range = False
     resign_count = 0
     draw_count = 0 
     count = 0
     positions = []
     result_val = 0
     while not board.is_game_over(claim_draw=True):
+        if not in_tablebase_range and len(board.piece_map()) <= 7:
+            in_tablebase_range = True
+        if tablebases and in_tablebase_range:
+            wdl = tablebases.get_wdl(board)
+            if wdl:
+                if board.turn == chess.BLACK:
+                    wdl = -1*wdl
+                if wdl == 2:
+                    result_val = 1
+                elif wdl == -2:
+                    result_val = -1
+                else:
+                    result_val = 0
+                break
+    
         # Search the position to the required depth
         result = engine.play(board, limit, info=chess.engine.Info.SCORE)
 
@@ -298,18 +313,6 @@ def play_game(fh, pos_left, args):
         if ply > MAX_PLY:
             result_val = 0
             break
-
-        # Check resign condition
-        if abs(result.info['score'].relative.score()) >= RESIGN_SCORE:
-            resign_count += 1;
-        else:
-            resign_count = 0
-        if resign_count >= RESIGN_COUNT:
-            if result.info['score'].relative.score() > 0:
-                result_val = 1
-            else:
-                result_val = -1
-            break;
 
         # Check draw adjudication
         if ply > MIN_DRAW_PLY:
@@ -366,6 +369,12 @@ def request_work(finished, remaining_work, finished_work, position_lock):
 
 def process_func(pid, training_file, remaining_work, finished_work,
                 position_lock, args):
+    # Open tablebases
+    if args.syzygy_path:
+        tablebases = chess.syzygy.open_tablebase(args.syzygy_path)
+    else:
+        tablebases = None
+   
     # Set seed for random number generation
     if (args.seed):
         random.seed(a=args.seed+pid*10)
@@ -387,7 +396,7 @@ def process_func(pid, training_file, remaining_work, finished_work,
             break
         pos_left = work_todo
         while pos_left > 0:
-            pos_left = play_game(fh, pos_left, args)
+            pos_left = play_game(fh, tablebases, pos_left, args)
 
     fh.close()
 
