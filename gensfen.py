@@ -9,6 +9,7 @@ import time
 import chess
 import chess.engine
 import chess.syzygy
+import chess.polyglot
 
 import numpy as np
 
@@ -227,7 +228,7 @@ def is_quiet(board, move):
     return not board.is_capture(move)
 
 
-def play_game(fh, tablebases, pos_left, args):
+def play_game(fh, tablebases, duplicates, hasher, pos_left, args):
     # Setup a new board
     board = setup_board(args)
 
@@ -299,6 +300,14 @@ def play_game(fh, tablebases, pos_left, args):
             else:
                 result_val = -1
             break
+
+        # Check for duplicates
+        boardhash = hasher.hash_board(board)
+        if boardhash in duplicates:
+            board.push(result.move)
+            continue
+        else:
+            duplicates.add(boardhash)
 
         # Extract and store information
         if board.turn == chess.WHITE:
@@ -374,7 +383,11 @@ def process_func(pid, training_file, remaining_work, finished_work,
         tablebases = chess.syzygy.open_tablebase(args.syzygy_path)
     else:
         tablebases = None
-   
+        
+    # Initialize variables for keeping track of duplicates
+    duplicates = set()
+    hasher = chess.polyglot.ZobristHasher(chess.polyglot.POLYGLOT_RANDOM_ARRAY)
+        
     # Set seed for random number generation
     if (args.seed):
         random.seed(a=args.seed+pid*10)
@@ -396,7 +409,7 @@ def process_func(pid, training_file, remaining_work, finished_work,
             break
         pos_left = work_todo
         while pos_left > 0:
-            pos_left = play_game(fh, tablebases, pos_left, args)
+            pos_left = play_game(fh, tablebases, duplicates, hasher, pos_left, args)
 
     fh.close()
 
