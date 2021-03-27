@@ -31,9 +31,9 @@ def save_model(nnue, output_path, epoch, idx, val_loss, new_best, epoch_end):
     if new_best:
         if os.path.exists(LATEST_BEST_PATH):
             os.remove(LATEST_BEST_PATH) 
-    best_path = f'{output_path}/best_epoch={epoch}_iter={idx+1}_loss={val_loss:.5f}.pt'
-    LATEST_BEST_PATH = best_path
-    torch.save(nnue.state_dict(), best_path)
+        best_path = f'{output_path}/best_epoch={epoch}_iter={idx+1}_loss={val_loss:.5f}.pt'
+        LATEST_BEST_PATH = best_path
+        torch.save(nnue.state_dict(), best_path)
 
     # Save the model as the final version for this epoch
     if epoch_end: 
