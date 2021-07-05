@@ -92,19 +92,18 @@ def read_fc_layer(f, layer, is_output=False):
     layer.weight.data = create_tensor(f, numpy.int8, layer.weight.shape).divide(kWeightScale)
 
 
-def main(args):
-    print('Converting %s to %s' % (args.source, args.target))
-  
+def serialize(source, target):
     # Set feature set
     features = halfkp
     features_name = features.Features.name
   
     # Convert model
-    if args.source.endswith('.pt'):
-        if not args.target.endswith('.nnue'):
+    if source.endswith('.pt'):
+        if not target.endswith('.nnue'):
             raise Exception('Target file must end with .nnue')
         nnue = M.NNUE(feature_set=features.Features())
-        nnue.load_state_dict(torch.load(args.source))
+        nnue.load_state_dict(torch.load(source,
+                             map_location=torch.device('cpu')))
         nnue.eval()
 
         buf = bytearray()
@@ -114,12 +113,12 @@ def main(args):
         write_fc_layer(buf, nnue.l2)
         write_fc_layer(buf, nnue.output, is_output=True)
 
-        with open(args.target, 'wb') as f:
+        with open(target, 'wb') as f:
             f.write(buf)
-    elif args.source.endswith('.nnue'):
-        if not args.target.endswith('.pt'):
+    elif source.endswith('.nnue'):
+        if not target.endswith('.pt'):
             raise Exception('Target file must end with .pt')
-        with open(args.source, 'rb') as f:
+        with open(source, 'rb') as f:
             nnue = M.NNUE(feature_set=features.Features())
             read_header(f)
             read_feature_transformer(f, nnue.input)
@@ -127,7 +126,7 @@ def main(args):
             read_fc_layer(f, nnue.l2)
             read_fc_layer(f, nnue.output, is_output=True)
       
-            torch.save(nnue.state_dict(), args.target)
+            torch.save(nnue.state_dict(), target)
     else:
         raise Exception('Invalid filetypes: ' + str(args))
 
@@ -138,4 +137,5 @@ if __name__ == '__main__':
     parser.add_argument('target', help='Target file (.pt or .nnue)')
     args = parser.parse_args()
 
-    main(args)
+    print('Converting %s to %s' % (args.source, args.target))
+    serialize(args.source, args.target)
