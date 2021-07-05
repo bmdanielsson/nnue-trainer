@@ -223,9 +223,11 @@ def setup_board(args):
 
 
 def is_quiet(board, move):
-    if board.is_check():
-        return False
-    return not board.is_capture(move)
+    return (not move.promotion and
+            not board.is_capture(move) and
+            not board.is_en_passant(move) and
+            not board.is_check() and
+            not board.gives_check(move))
 
 
 def play_game(fh, tablebases, duplicates, hasher, pos_left, args):
