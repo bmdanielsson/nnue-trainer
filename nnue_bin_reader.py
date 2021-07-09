@@ -84,6 +84,37 @@ def read_position(data):
             if piece:
                 board.set_piece_at(sq, piece)
 
+    # Castling availability
+    b, cursor = read_bit(data, cursor)
+    if b == 1:
+        board.castling_rights |= chess.BB_H1
+    b, cursor = read_bit(data, cursor)
+    if b == 1:
+        board.castling_rights |= chess.BB_A1
+    b, cursor = read_bit(data, cursor)
+    if b == 1:
+        board.castling_rights |= chess.BB_H8
+    b, cursor = read_bit(data, cursor)
+    if b == 1:
+        board.castling_rights |= chess.BB_A8
+
+    # En-passant square
+    b, cursor = read_bit(data, cursor)
+    if b == 1:
+        board.ep_square, cursor = read_bits(data, cursor, 6)
+
+    # 50-move counter, low-bits
+    low50, cursor = read_bits(data, cursor, 6)
+
+    # Fullmove counter
+    low_full, cursor = read_bits(data, cursor, 8)
+    high_full, cursor = read_bits(data, cursor, 8)
+    board.fullmove_number = (high_full << 8) | low_full
+
+    # 50-move counter, high-bits
+    high50, cursor = read_bit(data, cursor)
+    board.halfmove_clock = (high50 << 6) | low50
+
     return board
 
 
