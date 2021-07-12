@@ -69,9 +69,8 @@ def encode_piece_at(data, pos, board, sq):
 # Huffman Encoding of the board
 # Castling availability (1 bit x 4)
 # En passant square (1 or 1 + 6 bits)
-# 50-move counter (6 bits)
-# Full move counter (8 bits)
-# Full move counter high bits (8 bits)
+# 50-move counter low bits (6 bits)
+# Full move counter (16 bits)
 # 50-move counter high bit (1 bit)
 def encode_position(board):
     data = np.zeros(32, dtype='uint8')
@@ -111,20 +110,16 @@ def encode_position(board):
         pos = encode_bit(data, pos, np.uint16(1))
         pos = encode_bits(data, pos, np.uint16(board.ep_square), 6)
 
-    # Encode 50-move counter. Use 7 bits for counter unless Stockfish
-    # compatibility is requested. In that case the last bit is stored
-    # at the end instead in order to be backwards compoatible with
-    # older parsers.
+    # Encode 50-move counter. To keep compatibility Stockfish trainer
+    # only 6 bits are stored now. The last bit is stored at the end.
     pos = encode_bits(data, pos, np.uint16(board.halfmove_clock), 6)
 
     # Encode move counter
     pos = encode_bits(data, pos, np.uint16(board.fullmove_number), 8)
-
-    # Backwards compatible fix for 50-move counter only being stored
-    # with 6 bits. It's done this way to keep compatibility with
-    # Stockfish trainer.
-    high_bit = (board.halfmove_clock >> 6) & 1
     pos = encode_bits(data, pos, np.uint16(board.fullmove_number>>8), 8)
+
+    # Upper bit of 50-move counter
+    high_bit = (board.halfmove_clock >> 6) & 1
     pos = encode_bit(data, pos, np.uint16(high_bit))
 
     return data
