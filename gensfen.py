@@ -24,6 +24,7 @@ MAX_PLY = 400
 MIN_DRAW_PLY = 80
 DRAW_SCORE = 10
 DRAW_COUNT = 10
+EVAL_LIMIT = 10000
 
 HUFFMAN_TABLE = [np.uint8(0),    # No piece (1 bit)
                  np.uint8(1),    # Pawn (4 bits)
@@ -207,7 +208,7 @@ def play_random_moves(board, nmoves):
 
 
 def setup_board(args):
-    if args.use_frc and random.random() < args.frc_prob:
+    if args.frc_prob != 0.0 and random.random() < args.frc_prob:
         frc_board = chess.Board.from_chess960_pos(random.randint(0, 959))
         frc_board.set_castling_fen('-')
         board = chess.Board(fen=frc_board.fen())
@@ -225,7 +226,7 @@ def is_quiet(board, move):
             not board.gives_check(move))
 
 
-def play_game(fh, tablebases, duplicates, hasher, pos_left, args):
+def play_game(fh, duplicates, hasher, pos_left, args):
     # Setup a new board
     board = setup_board(args)
 
@@ -237,46 +238,21 @@ def play_game(fh, tablebases, duplicates, hasher, pos_left, args):
     # Start engine
     engine = chess.engine.SimpleEngine.popen_uci(args.engine)
     options = {}
-    options['Hash'] = args.hash
     options['Threads'] = 1
-    if 'UseNNUE' in engine.options:
-        options['UseNNUE'] = args.use_nnue
-        if args.eval_file:
-            options['EvalFile'] = args.eval_file
-    if args.syzygy_path and 'SyzygyPath' in engine.options:
-        options['SyzygyPath'] = args.syzygy_path
+    options['OwnBook'] = False
     engine.configure(options)
 
     # Setup search limits
     limit = chess.engine.Limit(time=MAX_TIME)
-    if args.depth:
-        limit.depth = args.depth
-    if args.nodes:
-        limit.nodes = args.nodes
+    limit.depth = args.depth
 
     # Let the engine play against itself and a record all positions
-    in_tablebase_range = False
     resign_count = 0
     draw_count = 0 
     count = 0
     positions = []
     result_val = 0
     while not board.is_game_over(claim_draw=True):
-        if not in_tablebase_range and len(board.piece_map()) <= 7:
-            in_tablebase_range = True
-        if tablebases and in_tablebase_range:
-            wdl = tablebases.get_wdl(board)
-            if wdl:
-                if board.turn == chess.BLACK:
-                    wdl = -1*wdl
-                if wdl == 2:
-                    result_val = 1
-                elif wdl == -2:
-                    result_val = -1
-                else:
-                    result_val = 0
-                break
-    
         # Search the position to the required depth
         result = engine.play(board, limit, info=chess.engine.Info.SCORE)
 
@@ -291,7 +267,7 @@ def play_game(fh, tablebases, duplicates, hasher, pos_left, args):
             continue
 
         # Check eval limit
-        if abs(result.info['score'].relative.score()) > args.eval_limit:
+        if abs(result.info['score'].relative.score()) >= EVAL_LIMIT:
             if result.info['score'].white().score() > 0:
                 result_val = 1
             else:
@@ -375,12 +351,6 @@ def request_work(finished, remaining_work, finished_work, position_lock):
 
 def process_func(pid, training_file, remaining_work, finished_work,
                 position_lock, args):
-    # Open tablebases
-    if args.syzygy_path:
-        tablebases = chess.syzygy.open_tablebase(args.syzygy_path)
-    else:
-        tablebases = None
-        
     # Initialize variables for keeping track of duplicates
     duplicates = set()
     hasher = chess.polyglot.ZobristHasher(chess.polyglot.POLYGLOT_RANDOM_ARRAY)
@@ -406,7 +376,7 @@ def process_func(pid, training_file, remaining_work, finished_work,
             break
         pos_left = work_todo
         while pos_left > 0:
-            pos_left = play_game(fh, tablebases, duplicates, hasher, pos_left, args)
+            pos_left = play_game(fh, duplicates, hasher, pos_left, args)
 
     fh.close()
 
@@ -470,37 +440,24 @@ def main(args):
 if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--depth', type=int,
-                    help='the depth to search each position to')
-    parser.add_argument('--nodes', type=int,
-                    help='the number of nodes to search')
-    parser.add_argument('-e', '--engine', help='the path to the engine',
-                    required=True)
+    parser.add_argument('-d', '--depth', type=int, default=8,
+            help='the depth to search each position to (deafult 8)')
+    parser.add_argument('-e', '--engine', type=str, required=True,
+            help='the path to the engine')
     parser.add_argument('-t', '--nthreads', type=int, default='1',
-                    help='the number of threads to use (default 1)')
+            help='the number of threads to use (default 1)')
     parser.add_argument('-n', '--npositions', type=int, default='100000000',
-                    help='the number of positions to generate (default 100000000)')
+            help='the number of positions to generate (default 100000000)')
     parser.add_argument('-o', '--output', type=str,
-                    help='the name of the output file', required=True)
+            help='the name of the output file', required=True)
     parser.add_argument('-r', '--random-plies', type=int, default='16',
-                    help='the number of random plies at the beginning (default 16)')
-    parser.add_argument('-l', '--eval-limit', type=int, default='10000',
-                    help='the highest evaluation that is accepted (default 10000)')
-    parser.add_argument('-a', '--hash', type=int, default='128',
-                    help='the amount of hash the engine should use in MB (default 128)')
-    parser.add_argument('-s', '--syzygy-path', type=str,
-                    help='the path to syzygy tablebases')
-    parser.add_argument('--use-nnue', action='store_true',
-                    help='flag indicating if NNUE evaluation should be used')
-    parser.add_argument('--eval-file', help='path to the NNUE file')
+            help='the number of random plies at the beginning (default 16)')
     parser.add_argument('--format', choices=['plain', 'bin'], default='bin',
-                    help='the output format (default bin)')
+            help='the output format (default bin)')
     parser.add_argument('--seed', type=int,
-                    help='seed to use for random number generator')
-    parser.add_argument('--use-frc', action='store_true',
-                    help="Include Chess960 starting positions")
-    parser.add_argument('--frc-prob', type=float, default=0.2,
-                    help="Probability of using a Chess960 starting position (default 0.2)")
+            help='seed to use for random number generator')
+    parser.add_argument('--frc-prob', type=float, default=0.0,
+            help="Probability of using a FRC starting position (default 0.0)")
 
     args = parser.parse_args()
 
@@ -509,10 +466,7 @@ if __name__ == "__main__":
     print(f'Number of positions: {args.npositions}')
     print(f'Depth: {args.depth}')
     print(f'Number of random plies: {args.random_plies}')
-    print(f'Eval limit: {args.eval_limit}')
-    print(f'Hash: {args.hash} MB')
-    print(f'Use NNUE: {args.use_nnue}')
-    print(f'Syzygy path: {args.syzygy_path}')
+    print(f'FRC probabliity: {args.frc_prob}')
     print('')
 
     main(args)
