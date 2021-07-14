@@ -18,7 +18,6 @@ from datetime import datetime
 
 BATCH_SIZE = 1000
 PROGRESS_INTERVAL = 10
-MAX_TIME = 60
 
 MAX_PLY = 400
 MIN_DRAW_PLY = 80
@@ -235,16 +234,21 @@ def play_game(fh, duplicates, hasher, pos_left, args):
     if board.is_game_over(claim_draw=True):
         return pos_left
 
-    # Start engine
-    engine = chess.engine.SimpleEngine.popen_uci(args.engine)
+    # Setup engine options
     options = {}
     options['Threads'] = 1
     options['OwnBook'] = False
-    engine.configure(options)
 
-    # Setup search limits
-    limit = chess.engine.Limit(time=MAX_TIME)
-    limit.depth = args.depth
+    # Start engine playing white
+    engine_white = chess.engine.SimpleEngine.popen_uci(args.engine)
+    engine_white.configure(options)
+
+    # Start engine playing black
+    engine_black = chess.engine.SimpleEngine.popen_uci(args.engine)
+    engine_black.configure(options)
+
+    # Setup search limit
+    limit = chess.engine.Limit(depth=args.depth)
 
     # Let the engine play against itself and a record all positions
     resign_count = 0
@@ -254,7 +258,12 @@ def play_game(fh, duplicates, hasher, pos_left, args):
     result_val = 0
     while not board.is_game_over(claim_draw=True):
         # Search the position to the required depth
-        result = engine.play(board, limit, info=chess.engine.Info.SCORE)
+        if board.turn == chess.WHITE:
+            result = engine_white.play(board, limit,
+                                       info=chess.engine.Info.SCORE)
+        else:
+            result = engine_black.play(board, limit,
+                                       info=chess.engine.Info.SCORE)
 
         # If no score was received then skip this move
         if 'score' not in result.info:
@@ -309,7 +318,8 @@ def play_game(fh, duplicates, hasher, pos_left, args):
         # Apply move
         board.push(result.move)
 
-    engine.quit()
+    engine_white.quit()
+    engine_black.quit()
 
     # Convert result to sfen representation
     if board.is_game_over(claim_draw=True):
