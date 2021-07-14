@@ -1,6 +1,7 @@
 import chess
 import os
 import math
+
 import numpy as np
 
 SFEN_BIN_SIZE = 40
