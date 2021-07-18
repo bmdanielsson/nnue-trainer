@@ -140,10 +140,12 @@ def get_sfen(fh):
 
 
 class NNUEBinReader:
-    def __init__(self, path):
+    def __init__(self, path, **args):
         self.path = path
-        self.fh = open(path, 'rb')
+        self.offset = args.get('offset', 0)
         self.nsamples = os.path.getsize(path)//SFEN_BIN_SIZE
+        self.fh = open(path, 'rb')
+        self.fh.seek(self.offset)
 
 
     def close(self):
@@ -172,3 +174,29 @@ class NNUEBinReader:
         np.fromfile(self.fh, dtype='uint8', count=1)
 
         return (board, score, result)
+
+
+    def get_raw_sample(self):
+        # Read the first 32 bytes which describe the position
+        raw_pos = np.fromfile(self.fh, dtype='uint8', count=32)
+
+        # Read the score
+        raw_score = np.fromfile(self.fh, dtype='int16', count=1)
+
+        # Read the move
+        raw_move = np.fromfile(self.fh, dtype='uint16', count=1)
+
+        # Read the ply count
+        raw_ply = np.fromfile(self.fh, dtype='uint16', count=1)
+
+        # Read the the result
+        raw_result = np.fromfile(self.fh, dtype='int8', count=1)
+
+        # Read and skip one byte which is just padding
+        np.fromfile(self.fh, dtype='uint8', count=1)
+
+        return (raw_pos, raw_score, raw_move, raw_ply, raw_result)
+
+
+    def parse_position(self, data):
+        return read_position(data)

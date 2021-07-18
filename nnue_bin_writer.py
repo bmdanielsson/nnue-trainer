@@ -148,6 +148,7 @@ class NNUEBinWriter:
     def close(self):
         self.fh.close()
 
+
     # position (256 bits)
     # score (16 bits)
     # move (16 bits)
@@ -168,4 +169,14 @@ class NNUEBinWriter:
         move_data.tofile(self.fh)
         np.uint16(ply).tofile(self.fh)
         np.int8(stm_result).tofile(self.fh)
+        np.uint8(0xFF).tofile(self.fh)
+
+
+    def write_raw_sample(self, raw_pos, raw_score, raw_move, raw_ply,
+                         raw_result):
+        raw_pos.tofile(self.fh)
+        raw_score.tofile(self.fh)
+        raw_move.tofile(self.fh)
+        raw_ply.tofile(self.fh)
+        raw_result.tofile(self.fh)
         np.uint8(0xFF).tofile(self.fh)
