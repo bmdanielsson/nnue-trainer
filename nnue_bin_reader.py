@@ -119,24 +119,22 @@ def read_position(data):
     return board
 
 
-def get_sfen(fh):
-    # Read the first 32 bytes which describe the position
-    data = np.fromfile(fh, dtype='uint8', count=32)
-    board = read_position(data)
+# bit  0- 5: destination square (from 0 to 63)
+# bit  6-11: origin square (from 0 to 63)
+# bit 12-13: promotion piece type - 2 (from KNIGHT-2 to QUEEN-2)
+# bit 14-15: special move flag: promotion (1), en passant (2), castling (3)
+def read_move(data):
+    to_sq = int(data & 0x003F)
+    from_sq = int((data >> 6) & 0x003F)
+    promotion = int((data >> 12) & 0x0003)
+    special = (data >> 14) & 0x0003
 
-    # Read the next two bytes which is score
-    score = np.fromfile(fh, dtype='int16', count=1)
+    if special == 1:
+        move = chess.Move(from_sq, to_sq, promotion+2)
+    else:
+        move = chess.Move(from_sq, to_sq)
 
-    # Read and skip the next four bytes which is the move and ply count
-    np.fromfile(fh, dtype='uint8', count=4)
-    
-    # Read the next byte which is the result
-    result = np.fromfile(fh, dtype='int8', count=1)
-
-    # Read and skip one byte which is just padding
-    np.fromfile(fh, dtype='uint8', count=1)
-
-    return board, score, result
+    return move
 
 
 class NNUEBinReader:
@@ -161,11 +159,15 @@ class NNUEBinReader:
         data = np.fromfile(self.fh, dtype='uint8', count=32)
         board = read_position(data)
 
-        # Read the next two bytes which is score
-        score = np.fromfile(self.fh, dtype='int16', count=1)
+        # Read the next two bytes which is the score
+        score = int(np.fromfile(self.fh, dtype='int16', count=1))
 
-        # Read and skip the next four bytes which is the move and ply count
-        np.fromfile(self.fh, dtype='uint8', count=4)
+        # Read the next two bytes which is the move
+        data = np.fromfile(self.fh, dtype='uint16', count=1)
+        move = read_move(data)
+
+        # Read the next two bytes which is the ply count
+        ply = int(np.fromfile(self.fh, dtype='uint16', count=1))
     
         # Read the next byte which is the result
         result = np.fromfile(self.fh, dtype='int8', count=1)
@@ -173,7 +175,7 @@ class NNUEBinReader:
         # Read and skip one byte which is just padding
         np.fromfile(self.fh, dtype='uint8', count=1)
 
-        return (board, score, result)
+        return (board, score, move, ply, result)
 
 
     def get_raw_sample(self):
@@ -200,3 +202,7 @@ class NNUEBinReader:
 
     def parse_position(self, data):
         return read_position(data)
+
+
+    def parse_move(self, data):
+        return read_move(data)
