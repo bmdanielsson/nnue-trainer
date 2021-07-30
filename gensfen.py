@@ -17,6 +17,7 @@ from datetime import datetime
 
 BATCH_SIZE = 1000
 PROGRESS_INTERVAL = 10
+MAX_TIME = 30
 
 MAX_PLY = 400
 MIN_DRAW_PLY = 80
@@ -97,7 +98,7 @@ def play_game(writer, duplicates, hasher, pos_left, args):
     engine_black.configure(options)
 
     # Setup search limit
-    limit = chess.engine.Limit(depth=args.depth)
+    limit = chess.engine.Limit(depth=args.depth, time=MAX_TIME)
 
     # Let the engine play against itself and a record all positions
     resign_count = 0
