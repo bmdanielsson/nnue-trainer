@@ -95,14 +95,17 @@ def train_step(nnue, sample, optimizer, lambda_, epoch, idx, num_batches):
     return loss
   
   
-def create_data_loaders(train_filename, val_filename, batch_size, main_device):
+def create_data_loaders(train_filename, val_filename, batch_size,
+                        use_factorizer, main_device):
     epoch_size = int(os.path.getsize(train_filename)/SAMPLE_SIZE)
     val_size = int(os.path.getsize(val_filename)/SAMPLE_SIZE)
 
     train_dataset = nnue_dataset.SparseBatchDataset(train_filename, batch_size,
-            (epoch_size + batch_size - 1) // batch_size, device=main_device)
+            use_factorizer, (epoch_size + batch_size - 1) // batch_size,
+            device=main_device)
     val_dataset = nnue_dataset.SparseBatchDataset(val_filename, batch_size,
-            (val_size + batch_size - 1) // batch_size, device=main_device)
+            use_factorizer, (val_size + batch_size - 1) // batch_size,
+            device=main_device)
 
     train = DataLoader(train_dataset, batch_size=None, batch_sampler=None)
     val = DataLoader(val_dataset, batch_size=None, batch_sampler=None)
@@ -126,6 +129,7 @@ def main(args):
     print(f'Training set: {args.train}')
     print(f'Validation set: {args.val}')
     print(f'Batch size: {args.batch_size}')
+    print(f'Using factorizer: {args.use_factorizer}')
     print(f'Lambda: {args.lambda_}')
     print(f'Validation check interval: {args.val_check_interval}')
     print(f'Resuming from: {args.resume_from_model}')
@@ -137,10 +141,10 @@ def main(args):
     writer = SummaryWriter(log_path)
 
     # Create data loaders
-    train_data_loader, val_data_loader = create_data_loaders(args.train, args.val, args.batch_size, main_device)
+    train_data_loader, val_data_loader = create_data_loaders(args.train, args.val, args.batch_size, args.use_factorizer, main_device)
 
     # Create model
-    nnue = M.NNUE(feature_set=halfkp.Features()).to(main_device)
+    nnue = M.NNUE(args.use_factorizer, feature_set=halfkp.Features()).to(main_device)
     if args.resume_from_model:
         nnue.load_state_dict(torch.load(args.resume_from_model))
 
@@ -187,6 +191,7 @@ if __name__ == '__main__':
     parser.add_argument('val', help='Validation data (.bin or .binpack)')
     parser.add_argument('--lambda', default=1.0, type=float, dest='lambda_', help='lambda=1.0 = train on evaluations, lambda=0.0 = train on game results, interpolates between (default=1.0)')
     parser.add_argument('--batch-size', default=8192, type=int, help='Number of positions per batch / per iteration (default=8192)')
+    parser.add_argument('--use-factorizer', action='store_true', help='Use factorizer when training')
     parser.add_argument('--val-check-interval', default=2000, type=int, help='How often to check validation loss (default=2000)')
     parser.add_argument('--resume-from-model', help='Initializes training using the weights from the given .pt model')
     args = parser.parse_args()

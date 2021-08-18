@@ -21,7 +21,7 @@ def write_feature_transformer(buf, model):
     bias = bias.mul(127).round().to(torch.int16)
     buf.extend(bias.flatten().numpy().tobytes())
 
-    weight = layer.weight.data
+    weight = model.combine_feature_weights()
     weight = weight.mul(127).round().to(torch.int16)
     buf.extend(weight.transpose(0, 1).flatten().numpy().tobytes())
 
@@ -49,14 +49,15 @@ def write_fc_layer(buf, layer, is_output=False):
 
 
 def serialize(source, target):
-    # Set feature set
-    features = halfkp
-    features_name = features.Features.name
-
     # Load model in .pt format
-    nnue = M.NNUE(feature_set=features.Features())
-    nnue.load_state_dict(torch.load(source,
-                         map_location=torch.device('cpu')))
+    try:
+        nnue = M.NNUE(feature_set=halfkp.Features())
+        nnue.load_state_dict(torch.load(source,
+                             map_location=torch.device('cpu')))
+    except RuntimeError:
+        nnue = M.NNUE(use_factorizer=True, feature_set=halfkp.Features())
+        nnue.load_state_dict(torch.load(source,
+                             map_location=torch.device('cpu')))
     nnue.eval()
 
     # Convert model to .nnue format

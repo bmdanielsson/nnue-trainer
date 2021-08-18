@@ -10,12 +10,17 @@ L2 = 32
 L3 = 32
 
 class NNUE(nn.Module):
-    def __init__(self, feature_set=halfkp.Features()):
+    def __init__(self, use_factorizer=False, feature_set=halfkp.Features()):
         super(NNUE, self).__init__()
-        self.input = nn.Linear(feature_set.inputs, L1)
+        self.use_factorizer = use_factorizer
+        self.feature_set = feature_set
+        self.input = nn.Linear(feature_set.get_num_inputs(use_factorizer), L1)
         self.l1 = nn.Linear(2 * L1, L2)
         self.l2 = nn.Linear(L2, L3)
         self.output = nn.Linear(L3, 1)
+
+        if self.use_factorizer:
+            self.init_virtual_features()
 
 
     def forward(self, us, them, w_in, b_in):
@@ -27,6 +32,27 @@ class NNUE(nn.Module):
         l2_ = torch.clamp(self.l2(l1_), 0.0, 1.0)
         x = self.output(l2_)
         return x
+
+
+    def init_virtual_features(self):
+        weights = self.input.weight.clone()
+        first, last = self.feature_set.get_virtual_features_indices()
+        weights[:, first:last] = 0.0
+        self.input.weight = nn.Parameter(weights)
+
+
+    def combine_feature_weights(self):
+        if not self.use_factorizer:
+            return self.input.weight
+
+        weights = self.input.weight.data.clone()
+        combined_weight = weights.new_zeros((weights.shape[0], halfkp.NUM_REAL_FEATURES))
+
+        for real_idx in range(halfkp.NUM_REAL_FEATURES):
+            virtual_idx = self.feature_set.real_to_virtual_feature(real_idx)
+            combined_weight[:, real_idx] = weights[:, real_idx] + weights[:, virtual_idx]
+
+        return combined_weight
 
 
 def loss_function(lambda_, pred, batch):
