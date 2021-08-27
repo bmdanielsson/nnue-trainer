@@ -30,19 +30,19 @@
 
 #define NUM_SQ                    64
 #define NUM_PT                    10
-#define NUM_PLANES                (NUM_SQ*NUM_PT + 1)
+#define NUM_PLANES                (NUM_SQ*NUM_PT)
 #define NUM_REAL_INPUTS           (NUM_PLANES*NUM_SQ)
 #define NUM_VIRTUAL_INPUTS        (NUM_PT*NUM_SQ)
 #define MAX_ACTIVE_FEATURES       32
 #define MAX_PIECE_FACTOR_FEATURES 32
 
 static uint32_t piece2index[NSIDES][NPIECES] = {
-    {0*NSQUARES+1, 1*NSQUARES+1, 2*NSQUARES+1, 3*NSQUARES+1, 4*NSQUARES+1,
-        5*NSQUARES+1, 6*NSQUARES+1, 7*NSQUARES+1, 8*NSQUARES+1, 9*NSQUARES+1,
-        10*NSQUARES+1, 11*NSQUARES+1},
-    {1*NSQUARES+1, 0*NSQUARES+1, 3*NSQUARES+1, 2*NSQUARES+1, 5*NSQUARES+1,
-        4*NSQUARES+1, 7*NSQUARES+1, 6*NSQUARES+1, 9*NSQUARES+1, 8*NSQUARES+1,
-        11*NSQUARES+1, 10*NSQUARES+1}
+    {0*NSQUARES, 1*NSQUARES, 2*NSQUARES, 3*NSQUARES, 4*NSQUARES,
+        5*NSQUARES, 6*NSQUARES, 7*NSQUARES, 8*NSQUARES, 9*NSQUARES,
+        10*NSQUARES, 11*NSQUARES},
+    {1*NSQUARES, 0*NSQUARES, 3*NSQUARES, 2*NSQUARES, 5*NSQUARES,
+        4*NSQUARES, 7*NSQUARES, 6*NSQUARES, 9*NSQUARES, 8*NSQUARES,
+        11*NSQUARES, 10*NSQUARES}
 };
 
 static int cmp_int(const void *p1, const void *p2)
@@ -60,9 +60,8 @@ static int cmp_int(const void *p1, const void *p2)
 
 static int transform_square(int sq, int side)
 {
-    /* For black the board is rotated 180 degrees */
     if (side == BLACK) {
-        sq = SQUARE(7-FILENR(sq), 7-RANKNR(sq));
+        sq = MIRROR(sq);
     }
     return sq;
 }
@@ -70,7 +69,7 @@ static int transform_square(int sq, int side)
 static int real_feature_index(int sq, int piece, int king_sq, int side)
 {
     sq = transform_square(sq, side);
-    return sq + piece2index[side][piece] + (NUM_PT*NSQUARES+1)*king_sq;
+    return sq + piece2index[side][piece] + NUM_PT*NUM_SQ*king_sq;
 }
 
 static int virtual_piece_feature_index(int sq, int piece, int offset, int side)

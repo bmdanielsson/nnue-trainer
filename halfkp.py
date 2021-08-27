@@ -1,6 +1,6 @@
 NUM_SQ = 64
 NUM_PT = 10
-NUM_PLANES = (NUM_SQ*NUM_PT + 1)
+NUM_PLANES = NUM_SQ*NUM_PT
 NUM_REAL_FEATURES = NUM_PLANES*NUM_SQ
 NUM_VIRTUAL_FEATURES = NUM_PT*NUM_SQ
 
@@ -21,5 +21,5 @@ class Features:
 
 
     def real_to_virtual_feature(self, real_idx):
-        piece_idx = real_idx%NUM_PLANES - 1
+        piece_idx = real_idx%NUM_PLANES
         return NUM_REAL_FEATURES + piece_idx

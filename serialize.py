@@ -6,7 +6,7 @@ import numpy
 import struct
 import torch
 
-VERSION = 0x00000001
+VERSION = 0x00000002
 
   
 def write_header(buf):

@@ -114,6 +114,7 @@ enum {
 #define PIECE_COLOR(p) ((p)&BLACK)
 #define RANKNR(s)      ((s)>>3)
 #define FILENR(s)      ((s)&7)
+#define MIRROR(s)      ((s)^56)
 
 /* Flags for different move types */
 enum {
