@@ -28,7 +28,7 @@ def save_model(nnue, output_path, epoch, idx, val_loss, new_best, epoch_end):
     torch.save(nnue.state_dict(), last_path)
 
     # Save the model as the new best version
-    if new_best:
+    if new_best and not epoch_end:
         if os.path.exists(LATEST_BEST_PATH):
             os.remove(LATEST_BEST_PATH) 
         best_path = f'{output_path}/best_epoch={epoch}_iter={idx+1}_loss={val_loss:.5f}.pt'
@@ -39,6 +39,7 @@ def save_model(nnue, output_path, epoch, idx, val_loss, new_best, epoch_end):
     if epoch_end: 
         epoch_path = f'{output_path}/epoch={epoch}_loss={val_loss:.5f}.pt'
         LATEST_EPOCH_PATH = epoch_path
+        LATEST_BEST_PATH = ''
         torch.save(nnue.state_dict(), epoch_path)
   
 
@@ -153,11 +154,12 @@ def main(args):
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=1, verbose=True, min_lr=1e-6)
 
     # Main training loop
-    best_val_loss = 1000000.0
     num_batches = len(train_data_loader)
     epoch = 0
     running_train_loss = 0.0
     while True:
+        best_val_loss = 1000000.0
+
         for k, sample in enumerate(train_data_loader):
             train_loss = train_step(nnue, sample, optimizer, args.lambda_, epoch, k, num_batches)
             running_train_loss += train_loss.item()
