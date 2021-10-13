@@ -27,6 +27,7 @@
 #include "types.h"
 #include "utils.h"
 #include "stream.h"
+#include "board.h"
 
 #define NUM_SQ                    64
 #define NUM_PT                    10
@@ -172,10 +173,12 @@ static void add_sample_to_batch(bool use_factorizer, int sample_idx,
 }
 
 EXPORT struct stream* CDECL create_sparse_batch_stream(const char* filename,
+                                                       int nsamples,
                                                        int batch_size,
                                                        int use_factorizer)
 {
-    return stream_create((char*)filename, batch_size, use_factorizer != 0);
+    return stream_create((char*)filename, nsamples, batch_size,
+                         use_factorizer != 0);
 }
 
 EXPORT void CDECL destroy_sparse_batch_stream(struct stream *stream)
@@ -256,19 +259,43 @@ int main(int argc, char *argv[])
 {
     struct stream       *stream;
     struct sparse_batch *batch;
+    struct sfen         *samples;
+    int                 nsamples;
     int                 k;
+    char                fenstr[FEN_MAX_LENGTH];
+    char                movestr[6];
 
-    if (argc != 2) {
+    if (argc != 4) {
         printf("Wrong number of arguments\n");
         return 1;
     }
 
-    stream = create_sparse_batch_stream(argv[1], 0, 8192);
-    for (k=0;k<1000;k++) {
-        batch = fetch_next_sparse_batch(stream);
-        destroy_sparse_batch(batch);
+    if (!strcmp(argv[1], "-t")) {
+        stream = create_sparse_batch_stream(argv[2], atoi(argv[3]), 8192, 0);
+        for (k=0;k<1000;k++) {
+            batch = fetch_next_sparse_batch(stream);
+            destroy_sparse_batch(batch);
+        }
+        destroy_sparse_batch_stream(stream);
+    } else if (!strcmp(argv[1], "-d")) {
+        samples = malloc(8192*sizeof(struct sfen));
+        stream = stream_create(argv[2], atoi(argv[3]), 8192, false);
+        do {
+            nsamples = stream_get_samples(stream, samples);
+            for (k=0;k<nsamples;k++) {
+                pos2str(&samples[k].pos, fenstr);
+                move2str(samples[k].move, movestr);
+                printf("fen %s\n", fenstr);
+                printf("move %s\n", movestr);
+                printf("score %d\n", samples[k].score);
+                printf("ply %d\n", samples[k].ply);
+                printf("result %d\n", samples[k].result);
+                printf("e\n");
+            }
+        } while (nsamples == 8192);
+        stream_destroy(stream);
+        free(samples);
     }
-    destroy_sparse_batch_stream(stream);
 
     return 0;
 }

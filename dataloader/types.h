@@ -115,6 +115,7 @@ enum {
 #define RANKNR(s)      ((s)>>3)
 #define FILENR(s)      ((s)&7)
 #define MIRROR(s)      ((s)^56)
+#define FLIP_COLOR(c)  ((c)^BLACK)
 
 /* Flags for different move types */
 enum {

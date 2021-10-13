@@ -30,8 +30,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "types.h"
-
 /* Macros for exporting symbols */
 #ifdef WINDOWS
 #define EXPORT __declspec(dllexport)
@@ -61,9 +59,6 @@ typedef struct {
 
 #define FILE_SIZE_ERROR UINT64_MAX
 
-/* The maximum possible length of a FEN string */
-#define FEN_MAX_LENGTH 256
-
 uint64_t get_file_size(char *file);
 
 void sleep_ms(int ms);
@@ -87,9 +82,5 @@ void event_destroy(event_t *event);
 void event_set(event_t *event);
 
 void event_wait(event_t *event);
-
-void pos2str(struct position *pos, char *str);
-
-void move2str(uint32_t move, char *str);
 
 #endif

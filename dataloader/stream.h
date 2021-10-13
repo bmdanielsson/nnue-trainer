@@ -49,7 +49,7 @@ struct stream {
     uint32_t nentries;
 };
 
-struct stream* stream_create(char *filename, int batch_size,
+struct stream* stream_create(char *filename, uint64_t nsamples, int batch_size,
                              bool use_factorizer);
 
 void stream_destroy(struct stream *stream);

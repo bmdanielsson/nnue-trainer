@@ -25,9 +25,19 @@
 #include <assert.h>
 
 #include "sfen.h" 
+#include "board.h"
 
 struct packed_sfen {
     uint8_t  position[32];
+    int16_t  score;
+    uint16_t move;
+    uint16_t ply;
+    int8_t   result;
+    uint8_t  padding;
+};
+
+struct compressed_sfen {
+    uint16_t marker;
     int16_t  score;
     uint16_t move;
     uint16_t ply;
@@ -223,14 +233,34 @@ static uint32_t parse_move(uint16_t packed_move, struct position *pos)
     return MOVE(from_sq, to_sq, promotion_piece, move_type);
 }
 
-void sfen_unpack_bin(uint8_t *data, struct sfen *sfen)
+void sfen_unpack_bin(uint8_t *data, struct sfen *sfen, struct position *pos)
 {
     struct packed_sfen *packed = (struct packed_sfen*)data;
     int                cursor = 0;
 
-    read_position(packed->position, &cursor, &sfen->pos);
+    read_position(packed->position, &cursor, pos);
+
+    sfen->pos = *pos;
     sfen->score = packed->score;
     sfen->move = parse_move(packed->move, &sfen->pos);
     sfen->ply = packed->ply;
     sfen->result = packed->result;
+    assert(packed->padding == 0xFF);
+
+    make_move(pos, sfen->move);
+}
+
+void sfen_unpack_binpack(uint8_t *data, struct sfen *sfen, struct position *pos)
+{
+    struct compressed_sfen *compressed = (struct compressed_sfen*)data;
+
+    assert(compressed->marker == 0x0000);
+    sfen->pos = *pos;
+    sfen->score = compressed->score;
+    sfen->move = parse_move(compressed->move, &sfen->pos);
+    sfen->ply = pos->fullmove*2 + ((pos->stm == BLACK)?1:0);
+    sfen->result = compressed->result;
+    assert(compressed->padding == 0xFF);
+
+    make_move(pos, sfen->move);
 }

@@ -19,25 +19,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#ifndef SFEN_H
-#define SFEN_H
+#ifndef BOARD_H
+#define BOARD_H
+
+#include <stdint.h>
 
 #include "types.h"
 
-#define SFEN_BIN_SIZE     40
-#define SFEN_BINPACK_SIZE 10
+/* The maximum possible length of a FEN string */
+#define FEN_MAX_LENGTH 256
 
-struct sfen {
-    struct position pos;
-    int16_t score;
-    uint32_t move;
-    uint16_t ply;
-    int8_t result;
-};
+void pos2str(struct position *pos, char *str);
 
-void sfen_unpack_bin(uint8_t *data, struct sfen *sfen, struct position *pos);
+void move2str(uint32_t move, char *str);
 
-void sfen_unpack_binpack(uint8_t *data, struct sfen *sfen,
-                         struct position *pos);
+void make_move(struct position *pos, uint32_t move);
 
 #endif

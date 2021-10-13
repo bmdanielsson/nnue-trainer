@@ -46,7 +46,8 @@ CFLAGS += -W -Wall -Werror -Wno-array-bounds -Wno-pointer-to-int-cast -Wno-int-t
 CC = clang
 
 # Sources
-SOURCES = dataloader/dataloader.c \
+SOURCES = dataloader/board.c \
+          dataloader/dataloader.c \
           dataloader/sfen.c \
           dataloader/stream.c \
           dataloader/utils.c

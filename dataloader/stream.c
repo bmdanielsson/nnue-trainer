@@ -27,7 +27,7 @@
 
 #include "stream.h"
 
-static void fill_worker_queue(struct stream *stream)
+static void fill_worker_queue(struct stream *stream, struct position *pos)
 {
     uint8_t buffer[SFEN_BIN_SIZE];
     size_t  n;
@@ -38,9 +38,21 @@ static void fill_worker_queue(struct stream *stream)
     for (k=stream->nentries;
          k < SFEN_BUFFER_SIZE && stream->iter < stream->nsamples;
          k++,stream->iter++) {
-        n = fread(buffer, SFEN_BIN_SIZE, 1, stream->fp);
+        /* Read first two bytes to see which type of smaple it is */
+        n = fread(buffer, 2, 1, stream->fp);
         assert(n == 1);
-        sfen_unpack_bin(buffer, &stream->buffer[k]);
+
+        /* Read remaining bytes of the sample */
+        if ((buffer[0] == 0x00) && (buffer[1] == 0x00)) {
+            n = fread(buffer+2, SFEN_BINPACK_SIZE-2, 1, stream->fp);
+            assert(n == 1);
+            sfen_unpack_binpack(buffer, &stream->buffer[k], pos);
+        } else {
+            n = fread(buffer+2, SFEN_BIN_SIZE-2, 1, stream->fp);
+            assert(n == 1);
+            sfen_unpack_bin(buffer, &stream->buffer[k], pos);
+        }
+
     }
     stream->nentries = k;
 
@@ -49,12 +61,13 @@ static void fill_worker_queue(struct stream *stream)
 
 static thread_retval_t worker_thread_func(void *data)
 {
-    struct stream *stream = (struct stream*)data;
+    struct stream   *stream = (struct stream*)data;
+    struct position pos;
 
     /* Main thread loop */
     while (!stream->exit && (stream->iter < stream->nsamples)) {
         /* Refill queue */
-        fill_worker_queue(stream);
+        fill_worker_queue(stream, &pos);
 
         /* Signal stream that there are more entries to read */
         event_set(&stream->read_event);
@@ -88,23 +101,13 @@ static int read_samples(struct stream *stream, struct sfen *buffer, int to_read)
     return count;
 }
 
-struct stream* stream_create(char *filename, int batch_size,
+struct stream* stream_create(char *filename, uint64_t nsamples, int batch_size,
                              bool use_factorizer)
 {
     struct stream *stream;
-    uint64_t      size;
 
     /* Seed RNG */
     srand(time(NULL));
-
-    /* Get the size of the data file */
-    size = get_file_size((char*)filename);
-    if (size == FILE_SIZE_ERROR) {
-        return NULL;
-    }
-    if (size%SFEN_BIN_SIZE != 0) {
-        return NULL;
-    }
 
     /* Create stream */
     stream = malloc(sizeof(struct stream));
@@ -112,14 +115,14 @@ struct stream* stream_create(char *filename, int batch_size,
     stream->iter = 0ULL;
     stream->batch_size = batch_size;
     stream->use_factorizer = use_factorizer;
-    stream->nsamples = size/SFEN_BIN_SIZE;
+    stream->nsamples = nsamples;
     stream->nread = 0ULL;
     mutex_init(&stream->stream_lock);
     event_init(&stream->write_event);
     event_init(&stream->read_event);
     stream->exit = false;
-    stream->nentries = 0; 
-	
+    stream->nentries = 0;
+
     /* Start worker thread */
     thread_create(&stream->thread, worker_thread_func, stream);
 
