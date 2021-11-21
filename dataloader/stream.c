@@ -170,6 +170,7 @@ int stream_get_samples(struct stream *stream, struct sfen *sfen)
         }
     }
     assert(count == to_read);
+    stream->nread += count;
 
     return count;
 }
