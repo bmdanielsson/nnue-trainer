@@ -23,6 +23,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 #if defined(WINDOWS)
 #include <windows.h>
 #else
@@ -33,6 +34,10 @@
 #endif
 
 #include "utils.h"
+
+static char piece2char[NPIECES+1] = {
+    'P', 'p', 'N', 'n', 'B', 'b', 'R', 'r', 'Q', 'q', 'K', 'k', '.'
+};
 
 uint64_t get_file_size(char *file)
 {
@@ -174,4 +179,135 @@ void event_wait(event_t *event)
     event->is_set = false;
     pthread_mutex_unlock(&event->mutex);
 #endif
+}
+
+void pos2str(struct position *pos, char *str)
+{
+    char *iter;
+    int  empty_count;
+    int  rank;
+    int  file;
+    int  sq;
+
+    /* Clear the string */
+    memset(str, 0, FEN_MAX_LENGTH);
+
+    /* Piece placement */
+    empty_count = 0;
+    iter = str;
+    for (rank=RANK_8;rank>=RANK_1;rank--) {
+        for (file=FILE_A;file<=FILE_H;file++) {
+            sq = SQUARE(file, rank);
+            if (pos->board[sq] != NO_PIECE) {
+                if (empty_count > 0) {
+                    *(iter++) = '0' + empty_count;
+                    empty_count = 0;
+                }
+                *(iter++) = piece2char[pos->board[sq]];
+            } else {
+                empty_count++;
+            }
+        }
+        if (empty_count != 0) {
+            *(iter++) = '0' + empty_count;
+            empty_count = 0;
+        }
+        if (rank > 0) {
+            *(iter++) = '/';
+        }
+    }
+    *(iter++) = ' ';
+
+    /* Active color */
+    if (pos->stm == WHITE) {
+        *(iter++) = 'w';
+    } else {
+        *(iter++) = 'b';
+    }
+    *(iter++) = ' ';
+
+    /* Castling avliability */
+    if (pos->castle == 0) {
+        *(iter++) = '-';
+    } else {
+        if (pos->castle&WHITE_KINGSIDE) {
+            *(iter++) = 'K';
+        }
+        if (pos->castle&WHITE_QUEENSIDE) {
+            *(iter++) = 'Q';
+        }
+        if (pos->castle&BLACK_KINGSIDE) {
+            *(iter++) = 'k';
+        }
+        if (pos->castle&BLACK_QUEENSIDE) {
+            *(iter++) = 'q';
+        }
+    }
+    *(iter++) = ' ';
+
+    /* En passant target square */
+    if (pos->ep_sq == NO_SQUARE) {
+        *(iter++) = '-';
+    } else {
+        *(iter++) = 'a' + FILENR(pos->ep_sq);
+        *(iter++) = '1' + RANKNR(pos->ep_sq);
+    }
+    *(iter++) = ' ';
+
+    /* Halfmove clock */
+    sprintf(iter, "%d", pos->fifty);
+    iter += strlen(iter);
+    *(iter++) = ' ';
+
+    /* Fullmove number */
+    sprintf(iter, "%d", pos->fullmove);
+
+}
+
+void move2str(uint32_t move, char *str)
+{
+    int from;
+    int to;
+    int promotion;
+
+    assert(str != NULL);
+
+    from = FROM(move);
+    to = TO(move);
+    promotion = PROMOTION(move);
+
+    if (ISNULLMOVE(move)) {
+        strcpy(str, "0000");
+        return;
+    } else if (move == NOMOVE) {
+        strcpy(str, "(none)");
+        return;
+    }
+
+    str[0] = FILENR(from) + 'a';
+    str[1] = RANKNR(from) + '1';
+    str[2] = FILENR(to) + 'a';
+    str[3] = RANKNR(to) + '1';
+    if (ISPROMOTION(move)) {
+        switch (PIECE_TYPE(promotion)) {
+        case KNIGHT:
+            str[4] = 'n';
+            break;
+        case BISHOP:
+            str[4] = 'b';
+            break;
+        case ROOK:
+            str[4] = 'r';
+            break;
+        case QUEEN:
+            str[4] = 'q';
+            break;
+        default:
+            assert(false);
+            break;
+        }
+        str[5] = '\0';
+    } else {
+        str[4] = '\0';
+    }
 }
