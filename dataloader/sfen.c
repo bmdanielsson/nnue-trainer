@@ -105,12 +105,15 @@ void read_position(uint8_t *data, int *cursor, struct position *pos)
     int rank;
     int file;
     int piece;
+    int fifty;
+    int fullmove;
 
     /* Initialize position */
     memset(pos, 0, sizeof(struct position));
     for (sq=0;sq<NSQUARES;sq++) {
         pos->board[sq] = NO_PIECE;
     }
+    pos->ep_sq = NO_SQUARE;
 
     /* The side to move */
     pos->stm = read_bit(data, cursor);
@@ -139,10 +142,85 @@ void read_position(uint8_t *data, int *cursor, struct position *pos)
         }
     }
 
-    /*
-     * Remaining parts are skipped since
-     * they are not used for training.
-     */
+    /* Castling */
+    if (read_bit(data, cursor) == 1) {
+        pos->castle |= WHITE_KINGSIDE;
+    }
+    if (read_bit(data, cursor) == 1) {
+        pos->castle |= WHITE_QUEENSIDE;
+    }
+    if (read_bit(data, cursor) == 1) {
+        pos->castle |= BLACK_KINGSIDE;
+    }
+    if (read_bit(data, cursor) == 1) {
+        pos->castle |= BLACK_QUEENSIDE;
+    }
+
+    /* En-passant square */
+    if (read_bit(data, cursor) == 1) {
+        pos->ep_sq = read_bits(data, cursor, 6);
+    }
+
+    /* 50-move counter, lower 6 bits */
+    fifty = read_bits(data, cursor, 6);
+
+    /* Fullmove counter */
+    fullmove = read_bits(data, cursor, 8);
+    fullmove |= (read_bits(data, cursor, 8) << 8);
+    pos->fullmove = fullmove;
+
+    /* 50-move counter, upper 1 bit */
+    fifty |= (read_bit(data, cursor) << 6);
+    pos->fifty = fifty;
+}
+
+static uint32_t parse_move(uint16_t packed_move, struct position *pos)
+{
+    int to = packed_move & 0x003F;
+    int from = (packed_move >> 6) & 0x003F;
+    int promotion = (packed_move >> 12) & 0x0003;
+    int special = (packed_move >> 14) & 0x0003;
+    int to_sq;
+    int from_sq;
+    int promotion_piece = NO_PIECE;
+    int move_type = NORMAL;
+
+    to_sq = to;
+    from_sq = from;
+    if (special == 1) {         /* Promotion */
+        promotion_piece = promotion*2 + 2 + pos->stm;
+        move_type = PROMOTION;
+        if (pos->board[to_sq] != NO_PIECE) {
+            move_type |= CAPTURE;
+        }
+    } else if (special == 2) {  /* En-passant */
+        move_type = EN_PASSANT;
+    } else if (special == 3) {  /* Castling */
+        switch (to) {
+        case 7:
+            move_type = KINGSIDE_CASTLE;
+            to_sq = 6;
+            break;
+        case 0:
+            move_type = QUEENSIDE_CASTLE;
+            to_sq = 2;
+            break;
+        case 63:
+            move_type = KINGSIDE_CASTLE;
+            to_sq = 62;
+            break;
+        case 56:
+            move_type = QUEENSIDE_CASTLE;
+            to_sq = 58;
+            break;
+        }
+    } else {
+        if (pos->board[to_sq] != NO_PIECE) {
+            move_type |= CAPTURE;
+        }
+    }
+
+    return MOVE(from_sq, to_sq, promotion_piece, move_type);
 }
 
 void sfen_unpack_bin(uint8_t *data, struct sfen *sfen)
@@ -152,10 +230,7 @@ void sfen_unpack_bin(uint8_t *data, struct sfen *sfen)
 
     read_position(packed->position, &cursor, &sfen->pos);
     sfen->score = packed->score;
+    sfen->move = parse_move(packed->move, &sfen->pos);
+    sfen->ply = packed->ply;
     sfen->result = packed->result;
-
-    /*
-     * Remaining parts are ignored since
-     * they are not used for training.
-     */
 }

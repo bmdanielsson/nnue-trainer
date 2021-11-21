@@ -29,6 +29,8 @@
 struct sfen {
     struct position pos;
     int16_t score;
+    uint32_t move;
+    uint16_t ply;
     int8_t result;
 };
 

@@ -162,6 +162,10 @@ struct position {
     uint8_t pieces[30];
     uint8_t npieces;
     uint8_t stm;
+    uint8_t castle;
+    uint8_t ep_sq;
+    uint8_t fifty;
+    uint16_t fullmove;
 };
 
 struct sparse_batch {
