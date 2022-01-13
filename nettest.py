@@ -13,8 +13,9 @@ import serialize
 def add_engine_options(command, engine, net):
     command.append('-engine')
     command.append('cmd=' + engine)
-    command.append('name=' + net)
-    command.append('option.EvalFile=' + net)
+    if net:
+        command.append('name=' + net)
+        command.append('option.EvalFile=' + net)
     command.append('option.UseNNUE=true')
 
 
@@ -93,7 +94,7 @@ if __name__ == "__main__":
     parser.add_argument('--base-engine', help='the path to the base engine',
                         type=str, required=True)
     parser.add_argument('--base-net', help='the base net to compare against',
-                        type=str, required=True)
+                        type=str)
     parser.add_argument('--test-engine', help='the path to the test engine',
                         type=str, required=True)
     parser.add_argument('--net-dir', help='folder containing nets to test',
