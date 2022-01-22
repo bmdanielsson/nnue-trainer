@@ -20,6 +20,7 @@ BATCH_SIZE = 1000
 PROGRESS_INTERVAL = 10
 MAX_TIME = 30
 
+RANDOM_PLIES = [10, 12, 14, 16]
 MAX_PLY = 400
 MIN_DRAW_PLY = 80
 DRAW_SCORE = 10
@@ -45,8 +46,9 @@ def write_sfen_plain(fh, sfen, result):
     fh.write('e\n')
 
 
-def play_random_moves(board, nmoves):
-    for k in range(0, nmoves):
+def play_random_moves(board):
+    nplies = random.choice(RANDOM_PLIES)
+    for k in range(0, nplies):
         legal_moves = [move for move in board.legal_moves]
         if len(legal_moves) > 1:
             idx = random.randint(0, len(legal_moves)-1)
@@ -85,7 +87,7 @@ def play_game(writer, duplicates, hasher, pos_left, supports_frc, args):
     board = setup_board(supports_frc, args)
 
     # Play a random opening
-    play_random_moves(board, args.random_plies)
+    play_random_moves(board)
     if board.is_game_over(claim_draw=True):
         return pos_left
 
@@ -323,8 +325,6 @@ if __name__ == "__main__":
             help='the number of positions to generate (default 100000000)')
     parser.add_argument('-o', '--output', type=str,
             help='the name of the output file', required=True)
-    parser.add_argument('-r', '--random-plies', type=int, default='16',
-            help='the number of random plies at the beginning (default 16)')
     parser.add_argument('--format', choices=['plain', 'bin', 'binpack'],
             default='bin', help='the output format (default bin)')
     parser.add_argument('--seed', type=int,
@@ -338,7 +338,6 @@ if __name__ == "__main__":
     print(f'Output format: {args.format}')
     print(f'Number of positions: {args.npositions}')
     print(f'Depth: {args.depth}')
-    print(f'Number of random plies: {args.random_plies}')
     print(f'FRC probabliity: {args.frc_prob}')
     print('')
 
