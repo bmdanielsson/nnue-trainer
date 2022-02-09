@@ -206,23 +206,10 @@ static uint32_t parse_move(uint16_t packed_move, struct position *pos)
     } else if (special == 2) {  /* En-passant */
         move_type = EN_PASSANT;
     } else if (special == 3) {  /* Castling */
-        switch (to) {
-        case 7:
-            move_type = KINGSIDE_CASTLE;
-            to_sq = 6;
-            break;
-        case 0:
+        if (to < from) {
             move_type = QUEENSIDE_CASTLE;
-            to_sq = 2;
-            break;
-        case 63:
+        } else if (to > from) {
             move_type = KINGSIDE_CASTLE;
-            to_sq = 62;
-            break;
-        case 56:
-            move_type = QUEENSIDE_CASTLE;
-            to_sq = 58;
-            break;
         }
     } else {
         if (pos->board[to_sq] != NO_PIECE) {

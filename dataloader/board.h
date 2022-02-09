@@ -31,7 +31,7 @@
 
 void pos2str(struct position *pos, char *str);
 
-void move2str(uint32_t move, char *str);
+void move2str(uint32_t move, struct position *pos, char *str);
 
 void make_move(struct position *pos, uint32_t move);
 

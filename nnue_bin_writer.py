@@ -88,13 +88,16 @@ class NNUEBinWriter:
                 pos = encode_piece_at(data, pos, board, sq)
 
         # Encode castling availability
-        pos = encode_bit(data, pos,
+        if board.chess960:
+            pos = encode_bits(data, pos, np.uint16(0), 4)
+        else:
+            pos = encode_bit(data, pos,
                     np.uint16(board.has_kingside_castling_rights(chess.WHITE)))
-        pos = encode_bit(data, pos,
+            pos = encode_bit(data, pos,
                     np.uint16(board.has_queenside_castling_rights(chess.WHITE)))
-        pos = encode_bit(data, pos,
+            pos = encode_bit(data, pos,
                     np.uint16(board.has_kingside_castling_rights(chess.BLACK)))
-        pos = encode_bit(data, pos,
+            pos = encode_bit(data, pos,
                     np.uint16(board.has_queenside_castling_rights(chess.BLACK)))
 
         # Encode en-passant square
@@ -128,14 +131,15 @@ class NNUEBinWriter:
 
         to_sq = move.to_square
         from_sq = move.from_square
-        if board.turn == chess.WHITE and board.is_kingside_castling(move):
-            to_sq = 7
-        elif board.turn == chess.WHITE and board.is_queenside_castling(move):
-            to_sq = 0
-        elif board.turn == chess.BLACK and board.is_kingside_castling(move):
-            to_sq = 63
-        elif board.turn == chess.BLACK and board.is_queenside_castling(move):
-            to_sq = 56
+        if not board.chess960:
+            if board.turn == chess.WHITE and board.is_kingside_castling(move):
+                to_sq = 7
+            elif board.turn == chess.WHITE and board.is_queenside_castling(move):
+                to_sq = 0
+            elif board.turn == chess.BLACK and board.is_kingside_castling(move):
+                to_sq = 63
+            elif board.turn == chess.BLACK and board.is_queenside_castling(move):
+                to_sq = 56
 
         data = data | np.uint16(to_sq)
         data = data | np.uint16(from_sq << 6)
@@ -156,8 +160,9 @@ class NNUEBinWriter:
     # ply (16 bits)
     # result (8 bits)
     # padding (8 bits)
-    def write_sample(self, position, score, move, ply, result):
-        board = chess.Board(fen=position)
+    def write_sample(self, position, score, move, ply, result, frc_pos):
+        board = chess.Board(fen=position, chess960=frc_pos)
+
         stm_result = result
         if board.turn == chess.BLACK:
             stm_result = -1*stm_result

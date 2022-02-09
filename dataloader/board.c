@@ -47,6 +47,24 @@ static int castling_permission_masks[NSQUARES] = {
      7, 15, 15, 15,  3, 15, 15, 11
 };
 
+/* Destination squares for the king when castling */
+static int kingside_castle_to[NSIDES] = {G1, G8};
+static int queenside_castle_to[NSIDES] = {C1, C8};
+
+static int to_square(uint32_t move)
+{
+    int to;
+
+    to = TO(move);
+    if (ISKINGSIDECASTLE(move)) {
+        to = kingside_castle_to[to >= A8];
+    } else if (ISQUEENSIDECASTLE(move)) {
+        to = queenside_castle_to[to >= A8];
+    }
+
+    return to;
+}
+
 static void add_piece(struct position *pos, int piece, int square)
 {
     int k;
@@ -82,12 +100,6 @@ static void remove_piece(struct position *pos, int piece, int square)
             }
         }
     }
-}
-
-static void move_piece(struct position *pos, int piece, int from, int to)
-{
-    remove_piece(pos, piece, from);
-    add_piece(pos, piece, to);
 }
 
 void pos2str(struct position *pos, char *str)
@@ -173,7 +185,7 @@ void pos2str(struct position *pos, char *str)
 
 }
 
-void move2str(uint32_t move, char *str)
+void move2str(uint32_t move, struct position *pos, char *str)
 {
     int from;
     int to;
@@ -182,7 +194,7 @@ void move2str(uint32_t move, char *str)
     assert(str != NULL);
 
     from = FROM(move);
-    to = TO(move);
+    to = to_square(move);
     promotion = PROMOTION(move);
 
     if (ISNULLMOVE(move)) {
@@ -191,6 +203,14 @@ void move2str(uint32_t move, char *str)
     } else if (move == NOMOVE) {
         strcpy(str, "(none)");
         return;
+    } else if (pos->castle == 0) {
+        if (ISKINGSIDECASTLE(move)) {
+            strcpy(str, "O-O");
+            return;
+        } else if (ISQUEENSIDECASTLE(move)) {
+            strcpy(str, "O-O-O");
+            return;
+        }
     }
 
     str[0] = FILENR(from) + 'a';
@@ -231,7 +251,7 @@ void make_move(struct position *pos, uint32_t move)
     int ep;
 
     from = FROM(move);
-    to = TO(move);
+    to = to_square(move);
     promotion = PROMOTION(move);
 
     /* Find the pieces involved in the move */
@@ -246,8 +266,10 @@ void make_move(struct position *pos, uint32_t move)
     }
 
     /* Update castling availability */
-    pos->castle &= castling_permission_masks[from];
-    pos->castle &= castling_permission_masks[to];
+    if (pos->castle != 0) {
+        pos->castle &= castling_permission_masks[from];
+        pos->castle &= castling_permission_masks[to];
+    }
 
     /* Remove piece from current position */
     remove_piece(pos, piece, from);
@@ -260,6 +282,11 @@ void make_move(struct position *pos, uint32_t move)
         remove_piece(pos, PAWN+FLIP_COLOR(pos->stm), ep);
     }
 
+    /* If this is a castling we have to remove the rook as well */
+    if (ISKINGSIDECASTLE(move) || ISQUEENSIDECASTLE(move)) {
+        remove_piece(pos, pos->stm+ROOK, TO(move));
+    }
+
     /* Add piece to new position */
     if (ISPROMOTION(move)) {
         add_piece(pos, promotion, to);
@@ -267,11 +294,11 @@ void make_move(struct position *pos, uint32_t move)
         add_piece(pos, piece, to);
     }
 
-    /* If this is a castling we have to move the rook */
+    /* If this is a castling we have to add the rook */
     if (ISKINGSIDECASTLE(move)) {
-        move_piece(pos, pos->stm+ROOK, to+1, to-1);
+        add_piece(pos, pos->stm+ROOK, (pos->stm==WHITE)?F1:F8);
     } else if (ISQUEENSIDECASTLE(move)) {
-        move_piece(pos, pos->stm+ROOK, to-2, to+1);
+        add_piece(pos, pos->stm+ROOK, (pos->stm==WHITE)?D1:D8);
     }
 
     /* Update the fifty move draw counter */

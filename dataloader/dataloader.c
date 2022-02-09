@@ -284,7 +284,7 @@ int main(int argc, char *argv[])
             nsamples = stream_get_samples(stream, samples);
             for (k=0;k<nsamples;k++) {
                 pos2str(&samples[k].pos, fenstr);
-                move2str(samples[k].move, movestr);
+                move2str(samples[k].move, &samples[k].pos, movestr);
                 printf("fen %s\n", fenstr);
                 printf("move %s\n", movestr);
                 printf("score %d\n", samples[k].score);

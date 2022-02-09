@@ -27,19 +27,30 @@ DRAW_SCORE = 10
 DRAW_COUNT = 10
 EVAL_LIMIT = 10000
 
-def write_sfen_bin(writer, sfen, result):
+def write_sfen_bin(writer, sfen, result, frc_pos):
     writer.write_sample(sfen['fen'], sfen['score'], sfen['move'], sfen['ply'],
-                        result)
+                        result, frc_pos)
 
 
-def write_sfen_plain(fh, sfen, result):
+def write_sfen_plain(fh, sfen, result, frc_pos):
     stm_result = result
     if sfen['score'].turn == chess.BLACK:
         stm_result = -1*stm_result
     stm_score = sfen['score'].pov(sfen['score'].turn).score()
 
-    fh.write('fen ' + sfen['fen'] + '\n')
-    fh.write('move ' + sfen['move'].uci() + '\n')
+    movestr = sfen['move'].uci()
+    fenstr = sfen['fen']
+    if frc_pos:
+        board = chess.Board(sfen['fen'], chess960=True)
+        if board.is_kingside_castling(sfen['move']):
+            movestr = 'O-O'
+        elif board.is_queenside_castling(sfen['move']):
+            movestr = 'O-O-O'
+        board.set_castling_fen('-')
+        fenstr = board.fen(en_passant='fen')
+
+    fh.write('fen ' + fenstr + '\n')
+    fh.write('move ' + movestr + '\n')
     fh.write('score ' + str(stm_score) + '\n')
     fh.write('ply ' + str(sfen['ply']) + '\n')
     fh.write('result ' + str(stm_result) + '\n')
@@ -62,6 +73,7 @@ def play_random_moves(board):
 
 def setup_board(supports_frc, args):
     if args.frc_prob != 0.0 and random.random() < args.frc_prob:
+        frc_pos = True
         frc_board = chess.Board.from_chess960_pos(random.randint(0, 959))
         if not supports_frc:
             frc_board.set_castling_fen('-')
@@ -69,9 +81,10 @@ def setup_board(supports_frc, args):
         else:
             board = frc_board
     else:
+        frc_pos = False
         board = chess.Board()
 
-    return board
+    return board, frc_pos
 
 
 def is_quiet(board, move):
@@ -84,7 +97,7 @@ def is_quiet(board, move):
 
 def play_game(writer, duplicates, hasher, pos_left, supports_frc, args):
     # Setup a new board
-    board = setup_board(supports_frc, args)
+    board, frc_pos = setup_board(supports_frc, args)
 
     # Play a random opening
     play_random_moves(board)
@@ -191,9 +204,9 @@ def play_game(writer, duplicates, hasher, pos_left, supports_frc, args):
     # Write positions to file
     for sfen in positions:
         if args.format == 'plain':
-            write_sfen_plain(writer, sfen, result_val)
+            write_sfen_plain(writer, sfen, result_val, frc_pos)
         else:
-            write_sfen_bin(writer, sfen, result_val)
+            write_sfen_bin(writer, sfen, result_val, frc_pos)
         pos_left = pos_left - 1
         if pos_left == 0:
             break
