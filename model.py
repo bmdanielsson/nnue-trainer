@@ -1,8 +1,12 @@
 import chess
 import halfkp
 import torch
+import struct
 from torch import nn
 import torch.nn.functional as F
+
+# The version of the export format
+EXPORT_FORMAT_VERSION = 0x00000003
 
 # 3 layer fully connected network
 L1 = 128
@@ -53,6 +57,31 @@ class NNUE(nn.Module):
             combined_weight[:, real_idx] = weights[:, real_idx] + weights[:, virtual_idx]
 
         return combined_weight
+
+
+    def serialize_halfkx_layer(self, buf, layer):
+        bias = layer.bias.data.cpu()
+        buf.extend(bias.flatten().numpy().tobytes())
+        weight = self.combine_feature_weights().cpu()
+        buf.extend(weight.transpose(0, 1).flatten().numpy().tobytes())
+
+
+    def serialize_linear_layer(self, buf, layer):
+        bias = layer.bias.data.cpu()
+        buf.extend(bias.flatten().numpy().tobytes())
+        weight = layer.weight.data.cpu()
+        buf.extend(weight.flatten().numpy().tobytes())
+
+
+    def serialize(self, buf):
+        # Write header
+        buf.extend(struct.pack('<i', EXPORT_FORMAT_VERSION))
+
+        # Write layers
+        self.serialize_halfkx_layer(buf, self.input)
+        self.serialize_linear_layer(buf, self.l1)
+        self.serialize_linear_layer(buf, self.l2)
+        self.serialize_linear_layer(buf, self.output)
 
 
 def loss_function(lambda_, pred, batch):

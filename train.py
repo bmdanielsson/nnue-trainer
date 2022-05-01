@@ -15,6 +15,17 @@ LATEST_LAST_PATH = ''
 LATEST_BEST_PATH = ''
 LATEST_EPOCH_PATH = ''
 
+
+def write_model(nnue, path):
+    # Serialize the model to a buffer
+    buf = bytearray()
+    nnue.serialize(buf)
+
+    # Write the buffer
+    with open(path, 'wb') as f:
+        f.write(buf)
+
+
 def save_model(nnue, output_path, epoch, idx, val_loss, new_best, epoch_end):
     global LATEST_LAST_PATH
     global LATEST_BEST_PATH
@@ -23,25 +34,25 @@ def save_model(nnue, output_path, epoch, idx, val_loss, new_best, epoch_end):
     # Save the model as the latest version 
     if os.path.exists(LATEST_LAST_PATH):
         os.remove(LATEST_LAST_PATH) 
-    last_path = f'{output_path}/last_epoch={epoch}_iter={idx+1}_loss={val_loss:.5f}.pt'
+    last_path = f'{output_path}/last_epoch={epoch}_iter={idx+1}_loss={val_loss:.5f}.nnue'
     LATEST_LAST_PATH = last_path
-    torch.save(nnue.state_dict(), last_path)
+    write_model(nnue, last_path)
 
     # Save the model as the new best version
     if new_best and not epoch_end:
         if os.path.exists(LATEST_BEST_PATH):
             os.remove(LATEST_BEST_PATH) 
-        best_path = f'{output_path}/best_epoch={epoch}_iter={idx+1}_loss={val_loss:.5f}.pt'
+        best_path = f'{output_path}/best_epoch={epoch}_iter={idx+1}_loss={val_loss:.5f}.nnue'
         LATEST_BEST_PATH = best_path
-        torch.save(nnue.state_dict(), best_path)
+        write_model(nnue, best_path)
 
     # Save the model as the final version for this epoch
     if epoch_end: 
-        epoch_path = f'{output_path}/epoch={epoch}_loss={val_loss:.5f}.pt'
+        epoch_path = f'{output_path}/epoch={epoch}_loss={val_loss:.5f}.nnue'
         LATEST_EPOCH_PATH = epoch_path
         LATEST_BEST_PATH = ''
-        torch.save(nnue.state_dict(), epoch_path)
-  
+        write_model(nnue, epoch_path)
+
 
 def prepare_output_directory():
     path = OUTPUT_DIR
@@ -130,7 +141,6 @@ def main(args):
     print(f'Using factorizer: {args.use_factorizer}')
     print(f'Lambda: {args.lambda_}')
     print(f'Validation check interval: {args.val_check_interval}')
-    print(f'Resuming from: {args.resume_from_model}')
     print(f'Logs written to: {log_path}')
     print(f'Data written to: {output_path}')
     print('')
@@ -143,8 +153,6 @@ def main(args):
 
     # Create model
     nnue = M.NNUE(args.use_factorizer, feature_set=halfkp.Features()).to(main_device)
-    if args.resume_from_model:
-        nnue.load_state_dict(torch.load(args.resume_from_model))
 
     # Configure optimizer
     optimizer = ranger.Ranger(nnue.parameters(), lr=1e-3)
@@ -194,7 +202,6 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', default=8192, type=int, help='Number of positions per batch / per iteration (default=8192)')
     parser.add_argument('--use-factorizer', action='store_true', help='Use factorizer when training')
     parser.add_argument('--val-check-interval', default=2000, type=int, help='How often to check validation loss (default=2000)')
-    parser.add_argument('--resume-from-model', help='Initializes training using the weights from the given .pt model')
     args = parser.parse_args()
 
     main(args)

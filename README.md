@@ -18,7 +18,6 @@ make
 # Basic training steps
 ```
 python train.py training.bin validation.bin
-python serialize.py last.pt nn.nnue
 ```
 
 # Logging
