@@ -15,7 +15,9 @@ def add_engine_options(command, engine, net):
     command.append('-engine')
     command.append('cmd=' + engine)
     if net:
-        command.append('name=' + net)
+        name = os.path.basename(net)
+        name = os.path.splitext(name)[0]
+        command.append('name=' + name)
         command.append('option.EvalFile=' + net)
     command.append('option.UseNNUE=true')
 
