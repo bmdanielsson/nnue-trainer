@@ -173,7 +173,7 @@ static void add_sample_to_batch(bool use_factorizer, int sample_idx,
 }
 
 EXPORT struct stream* CDECL create_sparse_batch_stream(const char* filename,
-                                                       int nsamples,
+                                                       uint64_t nsamples,
                                                        int batch_size,
                                                        int use_factorizer)
 {
