@@ -6,10 +6,10 @@ from torch import nn
 import torch.nn.functional as F
 
 # The version of the export format
-EXPORT_FORMAT_VERSION = 0x00000003
+EXPORT_FORMAT_VERSION = 0x00000004
 
 # 3 layer fully connected network
-L1 = 128
+L1 = 256
 L2 = 32
 L3 = 32
 
