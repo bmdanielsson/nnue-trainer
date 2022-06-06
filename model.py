@@ -47,7 +47,7 @@ class NNUE(nn.Module):
 
     def combine_feature_weights(self):
         if not self.use_factorizer:
-            return self.input.weight
+            return self.input.weight.data.clone()
 
         weights = self.input.weight.data.clone()
         combined_weight = weights.new_zeros((weights.shape[0], halfkp.NUM_REAL_FEATURES))
