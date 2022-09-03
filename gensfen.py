@@ -71,15 +71,12 @@ def play_random_moves(board):
             break
 
 
-def setup_board(supports_frc, args):
+def setup_board(args):
     if args.frc_prob != 0.0 and random.random() < args.frc_prob:
         frc_pos = True
         frc_board = chess.Board.from_chess960_pos(random.randint(0, 959))
-        if not supports_frc:
-            frc_board.set_castling_fen('-')
-            board = chess.Board(fen=frc_board.fen())
-        else:
-            board = frc_board
+        frc_board.set_castling_fen('-')
+        board = chess.Board(fen=frc_board.fen())
     else:
         frc_pos = False
         board = chess.Board()
@@ -95,9 +92,9 @@ def is_quiet(board, move):
             not board.gives_check(move))
 
 
-def play_game(writer, duplicates, hasher, pos_left, supports_frc, args):
+def play_game(writer, duplicates, hasher, pos_left, args):
     # Setup a new board
-    board, frc_pos = setup_board(supports_frc, args)
+    board, frc_pos = setup_board(args)
 
     # Play a random opening
     play_random_moves(board)
@@ -230,7 +227,7 @@ def request_work(finished, remaining_work, finished_work, position_lock):
 
 
 def process_func(pid, training_file, remaining_work, finished_work,
-                 position_lock, supports_frc, args):
+                 position_lock, args):
     # Initialize variables for keeping track of duplicates
     duplicates = set()
     hasher = chess.polyglot.ZobristHasher(chess.polyglot.POLYGLOT_RANDOM_ARRAY)
@@ -258,8 +255,7 @@ def process_func(pid, training_file, remaining_work, finished_work,
             break
         pos_left = work_todo
         while pos_left > 0:
-            pos_left = play_game(writer, duplicates, hasher, pos_left,
-                                supports_frc, args)
+            pos_left = play_game(writer, duplicates, hasher, pos_left, args)
 
     writer.close()
 
@@ -272,11 +268,6 @@ def main(args):
     finished_work = Value('i', 0)
     position_lock = Lock()
 
-    # Check if the engine supports FRC
-    engine = chess.engine.SimpleEngine.popen_uci(args.engine)
-    supports_frc = 'UCI_Chess960' in engine.options
-    engine.quit()
-
     # Start generating data with all threads
     training_files = []
     processes = []
@@ -286,7 +277,7 @@ def main(args):
         training_files.append(training_file)
 
         process_args = (pid, training_file, remaining_work, finished_work,
-                        position_lock, supports_frc, args)
+                        position_lock, args)
         processes.append(Process(target=process_func, args=process_args))
         processes[pid].start()
 
