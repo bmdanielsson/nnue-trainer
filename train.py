@@ -131,7 +131,8 @@ def main(args):
     
     # Create directories to store data and logs in
     output_path = prepare_output_directory()
-    log_path = prepare_log_directory()
+    if args.log:
+        log_path = prepare_log_directory()
 
     # Print configuration info
     print(f'Device: {main_device}')
@@ -141,12 +142,14 @@ def main(args):
     print(f'Using factorizer: {args.use_factorizer}')
     print(f'Lambda: {args.lambda_}')
     print(f'Validation check interval: {args.val_check_interval}')
-    print(f'Logs written to: {log_path}')
+    if args.log:
+        print(f'Logs written to: {log_path}')
     print(f'Data written to: {output_path}')
     print('')
 
     # Create log writer
-    writer = SummaryWriter(log_path)
+    if args.log:
+        writer = SummaryWriter(log_path)
 
     # Create data loaders
     if  args.train_size != None:
@@ -186,8 +189,9 @@ def main(args):
                     new_best = True
                     best_val_loss = val_loss
                 save_model(nnue, output_path, epoch, k, val_loss, new_best, False)
-                writer.add_scalar('training loss', running_train_loss/args.val_check_interval, epoch*num_batches + k)
-                writer.add_scalar('validation loss', val_loss, epoch*num_batches + k)
+                if args.log:
+                    writer.add_scalar('training loss', running_train_loss/args.val_check_interval, epoch*num_batches + k)
+                    writer.add_scalar('validation loss', val_loss, epoch*num_batches + k)
                 running_train_loss = 0.0
     
         val_loss = calculate_validation_loss(nnue, val_data_loader, args.lambda_)
@@ -212,6 +216,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', default=8192, type=int, help='Number of positions per batch / per iteration (default=8192)')
     parser.add_argument('--use-factorizer', action='store_true', help='Use factorizer when training')
     parser.add_argument('--val-check-interval', default=2000, type=int, help='How often to check validation loss (default=2000)')
+    parser.add_argument('--log', action='store_true', help='Enable logging during training')
     args = parser.parse_args()
 
     main(args)
