@@ -300,12 +300,12 @@ def main(args):
 
     # Merge data from all threads into one file
     if args.format == 'plain':
-        with open(args.output, 'w') as wfd:
+        with open(args.output, 'a') as wfd:
             for f in training_files:
                 with open(f, 'r') as fd:
                     shutil.copyfileobj(fd, wfd)
     else:
-        with open(args.output, 'wb') as wfd:
+        with open(args.output, 'ab') as wfd:
             for f in training_files:
                 with open(f, 'rb') as fd:
                     shutil.copyfileobj(fd, wfd)
