@@ -63,24 +63,24 @@ class SparseBatch(ctypes.Structure):
 
 SparseBatchPtr = ctypes.POINTER(SparseBatch)
 
+create_sparse_batch_stream = dll.create_sparse_batch_stream
+create_sparse_batch_stream.restype = ctypes.c_void_p
+create_sparse_batch_stream.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.c_int, ctypes.c_int]
+destroy_sparse_batch_stream = dll.destroy_sparse_batch_stream
+destroy_sparse_batch_stream.argtypes = [ctypes.c_void_p]
+fetch_next_sparse_batch = dll.fetch_next_sparse_batch
+fetch_next_sparse_batch.restype = SparseBatchPtr
+fetch_next_sparse_batch.argtypes = [ctypes.c_void_p]
+destroy_sparse_batch = dll.destroy_sparse_batch
 
-class TrainingDataProvider:
-    def __init__(
-        self,
-        create_stream,
-        destroy_stream,
-        fetch_next,
-        destroy_part,
-        filename,
-        nsamples,
-        batch_size,
-        use_factorizer,
-        device='cpu'):
 
-        self.create_stream = create_stream
-        self.destroy_stream = destroy_stream
-        self.fetch_next = fetch_next
-        self.destroy_part = destroy_part
+class SparseBatchProvider:
+    def __init__(self, filename, nsamples, batch_size, use_factorizer,
+                 device='cpu'):
+        self.create_stream = create_sparse_batch_stream
+        self.destroy_stream = destroy_sparse_batch_stream
+        self.fetch_next = fetch_next_sparse_batch
+        self.destroy_batch = destroy_sparse_batch
         self.filename = filename.encode('utf-8')
         self.nsamples = nsamples
         self.batch_size = batch_size
@@ -103,7 +103,7 @@ class TrainingDataProvider:
                 tensors = v.contents.get_tensors_cpu()
             else:
                 tensors = v.contents.get_tensors(self.device)
-            self.destroy_part(v)
+            self.destroy_batch(v)
             return tensors
         else:
             raise StopIteration
@@ -111,33 +111,6 @@ class TrainingDataProvider:
 
     def __del__(self):
         self.destroy_stream(self.stream)
-
-
-create_sparse_batch_stream = dll.create_sparse_batch_stream
-create_sparse_batch_stream.restype = ctypes.c_void_p
-create_sparse_batch_stream.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.c_int, ctypes.c_int]
-destroy_sparse_batch_stream = dll.destroy_sparse_batch_stream
-destroy_sparse_batch_stream.argtypes = [ctypes.c_void_p]
-
-fetch_next_sparse_batch = dll.fetch_next_sparse_batch
-fetch_next_sparse_batch.restype = SparseBatchPtr
-fetch_next_sparse_batch.argtypes = [ctypes.c_void_p]
-destroy_sparse_batch = dll.destroy_sparse_batch
-
-
-class SparseBatchProvider(TrainingDataProvider):
-    def __init__(self, filename, nsamples, batch_size, use_factorizer,
-                 device='cpu'):
-        super(SparseBatchProvider, self).__init__(
-            create_sparse_batch_stream,
-            destroy_sparse_batch_stream,
-            fetch_next_sparse_batch,
-            destroy_sparse_batch,
-            filename,
-            nsamples,
-            batch_size,
-            use_factorizer,
-            device)
 
 
 class SparseBatchDataset(torch.utils.data.IterableDataset):
