@@ -4,7 +4,9 @@ import nnue_dataset
 import halfkp
 import torch
 import ranger
+import time
 import os.path
+from datetime import timedelta
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter
 
@@ -99,10 +101,14 @@ def train_step(nnue, sample, optimizer, lambda_, epoch, idx, num_batches):
 
     pred = nnue(us, them, white, black)
     loss = M.loss_function(lambda_, pred, sample)
-    print(f'Epoch {epoch}, {int(((idx+1)/num_batches)*100.0)}% ({idx+1}/{num_batches}) => {loss.item():.5f}', end='\r')
     loss.backward()
     optimizer.step()
     nnue.zero_grad()
+    if (idx+1) < num_batches:
+        endstr='\r'
+    else:
+        endstr=''
+    print(f'Epoch {epoch}, {int(((idx+1)/num_batches)*100.0)}% ({idx+1}/{num_batches}) => {loss.item():.5f}', end=endstr)
 
     return loss
   
@@ -177,6 +183,7 @@ def main(args):
     running_train_loss = 0.0
     while True:
         best_val_loss = 1000000.0
+        start = time.monotonic()
 
         for k, sample in enumerate(train_data_loader):
             train_loss = train_step(nnue, sample, optimizer, args.lambda_, epoch, k, num_batches)
@@ -200,7 +207,8 @@ def main(args):
             new_best = True
             best_val_loss = val_loss
         save_model(nnue, output_path, epoch, num_batches-1, val_loss, new_best, True)
-        print('')    
+        stop = time.monotonic()
+        print(f' ({timedelta(seconds=stop-start)})')
 
         scheduler.step(val_loss)
         epoch += 1
