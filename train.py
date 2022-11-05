@@ -158,16 +158,8 @@ def main(args):
         writer = SummaryWriter(log_path)
 
     # Create data loaders
-    if  args.train_size != None:
-        train_size = args.train_size
-    else:
-        assert args.train.endswith('.bin'), 'missing --train_size'
-        train_size = int(os.path.getsize(args.train)/BIN_SAMPLE_SIZE)
-    if  args.val_size != None:
-        val_size = args.val_size
-    else:
-        assert args.val.endswith('.bin'), 'missing --val_size'
-        val_size = int(os.path.getsize(args.val)/BIN_SAMPLE_SIZE)
+    train_size = int(os.path.getsize(args.train)/BIN_SAMPLE_SIZE)
+    val_size = int(os.path.getsize(args.val)/BIN_SAMPLE_SIZE)
     train_data_loader, val_data_loader = create_data_loaders(args.train, args.val, train_size, val_size, args.batch_size, args.use_factorizer, main_device)
 
     # Create model
@@ -216,10 +208,8 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train a NNUE style network.')
-    parser.add_argument('train', help='Training data (.bin or .binpack)')
-    parser.add_argument('val', help='Validation data (.bin or .binpack)')
-    parser.add_argument('--train-size', type=int, help='Number of training samples')
-    parser.add_argument('--val-size', type=int, help='Number of Validation samples')
+    parser.add_argument('train', help='Training data (.bin)')
+    parser.add_argument('val', help='Validation data (.bin)')
     parser.add_argument('--lambda', default=1.0, type=float, dest='lambda_', help='lambda=1.0 = train on evaluations, lambda=0.0 = train on game results, interpolates between (default=1.0)')
     parser.add_argument('--batch-size', default=8192, type=int, help='Number of positions per batch / per iteration (default=8192)')
     parser.add_argument('--use-factorizer', action='store_true', help='Use factorizer when training')

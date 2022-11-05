@@ -25,7 +25,6 @@
 #include "types.h"
 
 #define SFEN_BIN_SIZE     40
-#define SFEN_BINPACK_SIZE 10
 
 struct sfen {
     struct position pos;
@@ -36,8 +35,5 @@ struct sfen {
 };
 
 void sfen_unpack_bin(uint8_t *data, struct sfen *sfen, struct position *pos);
-
-void sfen_unpack_binpack(uint8_t *data, struct sfen *sfen,
-                         struct position *pos);
 
 #endif

@@ -30,23 +30,6 @@ static char piece2char[NPIECES+1] = {
     'P', 'p', 'N', 'n', 'B', 'b', 'R', 'r', 'Q', 'q', 'K', 'k', '.'
 };
 
-/*
- * Array of masks for updating castling permissions. For instance
- * a mask of 13 on A1 means that if a piece is moved to/from this
- * square then WHITE can still castle king side and black can still
- * castle both king side and queen side.
- */
-static int castling_permission_masks[NSQUARES] = {
-    13, 15, 15, 15, 12, 15, 15, 14,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-    15, 15, 15, 15, 15, 15, 15, 15,
-     7, 15, 15, 15,  3, 15, 15, 11
-};
-
 /* Destination squares for the king when castling */
 static int kingside_castle_to[NSIDES] = {G1, G8};
 static int queenside_castle_to[NSIDES] = {C1, C8};
@@ -63,43 +46,6 @@ static int to_square(uint32_t move)
     }
 
     return to;
-}
-
-static void add_piece(struct position *pos, int piece, int square)
-{
-    int k;
-
-    pos->board[square] = piece;
-    if (PIECE_TYPE(piece) == KING) {
-        for (k=0;k<NSIDES;k++) {
-            if (pos->kings[k] == NO_SQUARE) {
-                pos->kings[k] = square;
-            }
-        }
-    } else {
-        pos->pieces[pos->npieces++] = square;
-    }
-}
-
-static void remove_piece(struct position *pos, int piece, int square)
-{
-    int k;
-
-    pos->board[square] = NO_PIECE;
-    if (PIECE_TYPE(piece) == KING) {
-        for (k=0;k<NSIDES;k++) {
-            if (pos->kings[k] == square) {
-                pos->kings[k] = NO_SQUARE;
-            }
-        }
-    } else {
-        for (k=0;k<30;k++) {
-            if (pos->pieces[k] == square) {
-                pos->pieces[k] = pos->pieces[--pos->npieces];
-                break;
-            }
-        }
-    }
 }
 
 void pos2str(struct position *pos, char *str)
@@ -239,80 +185,4 @@ void move2str(uint32_t move, struct position *pos, char *str)
     } else {
         str[4] = '\0';
     }
-}
-
-void make_move(struct position *pos, uint32_t move)
-{
-    int capture;
-    int piece;
-    int from;
-    int to;
-    int promotion;
-    int ep;
-
-    from = FROM(move);
-    to = to_square(move);
-    promotion = PROMOTION(move);
-
-    /* Find the pieces involved in the move */
-    capture = pos->board[to];
-    piece = pos->board[from];
-
-    /* Check if the move enables an en passant capture */
-    if ((PIECE_TYPE(piece) == PAWN) && (abs(to-from) == 16)) {
-        pos->ep_sq = (pos->stm == WHITE)?to-8:to+8;
-    } else {
-        pos->ep_sq = NO_SQUARE;
-    }
-
-    /* Update castling availability */
-    if (pos->castle != 0) {
-        pos->castle &= castling_permission_masks[from];
-        pos->castle &= castling_permission_masks[to];
-    }
-
-    /* Remove piece from current position */
-    remove_piece(pos, piece, from);
-
-    /* If necessary remove captured piece */
-    if (ISCAPTURE(move)) {
-        remove_piece(pos, capture, to);
-    } else if (ISENPASSANT(move)) {
-        ep = (pos->stm == WHITE)?to-8:to+8;
-        remove_piece(pos, PAWN+FLIP_COLOR(pos->stm), ep);
-    }
-
-    /* If this is a castling we have to remove the rook as well */
-    if (ISKINGSIDECASTLE(move) || ISQUEENSIDECASTLE(move)) {
-        remove_piece(pos, pos->stm+ROOK, TO(move));
-    }
-
-    /* Add piece to new position */
-    if (ISPROMOTION(move)) {
-        add_piece(pos, promotion, to);
-    } else {
-        add_piece(pos, piece, to);
-    }
-
-    /* If this is a castling we have to add the rook */
-    if (ISKINGSIDECASTLE(move)) {
-        add_piece(pos, pos->stm+ROOK, (pos->stm==WHITE)?F1:F8);
-    } else if (ISQUEENSIDECASTLE(move)) {
-        add_piece(pos, pos->stm+ROOK, (pos->stm==WHITE)?D1:D8);
-    }
-
-    /* Update the fifty move draw counter */
-    if (ISCAPTURE(move) || (PIECE_TYPE(piece) == PAWN)) {
-        pos->fifty = 0;
-    } else {
-        pos->fifty++;
-    }
-
-    /* Update fullmove counter */
-    if (pos->stm == BLACK) {
-        pos->fullmove++;
-    }
-
-    /* Change side to move */
-    pos->stm = FLIP_COLOR(pos->stm);
 }

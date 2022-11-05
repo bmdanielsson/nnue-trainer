@@ -30,7 +30,6 @@
 static void fill_worker_queue(struct stream *stream, struct position *pos)
 {
     uint8_t buffer[SFEN_BIN_SIZE];
-    size_t  n;
     int     k;
 
     mutex_lock(&stream->stream_lock);
@@ -38,21 +37,9 @@ static void fill_worker_queue(struct stream *stream, struct position *pos)
     for (k=stream->nentries;
          k < SFEN_BUFFER_SIZE && stream->iter < stream->nsamples;
          k++,stream->iter++) {
-        /* Read first two bytes to see which type of smaple it is */
-        n = fread(buffer, 2, 1, stream->fp);
-        assert(n == 1);
-
-        /* Read remaining bytes of the sample */
-        if ((buffer[0] == 0x00) && (buffer[1] == 0x00)) {
-            n = fread(buffer+2, SFEN_BINPACK_SIZE-2, 1, stream->fp);
-            assert(n == 1);
-            sfen_unpack_binpack(buffer, &stream->buffer[k], pos);
-        } else {
-            n = fread(buffer+2, SFEN_BIN_SIZE-2, 1, stream->fp);
-            assert(n == 1);
+        if (fread(buffer, SFEN_BIN_SIZE, 1, stream->fp) == 1) {
             sfen_unpack_bin(buffer, &stream->buffer[k], pos);
         }
-
     }
     stream->nentries = k;
 

@@ -11,7 +11,6 @@ import chess.engine
 import chess.syzygy
 import chess.polyglot
 import nnue_bin_writer
-import nnue_binpack_writer
 
 from multiprocessing import Process, Lock, Value
 from datetime import datetime
@@ -241,10 +240,8 @@ def process_func(pid, training_file, remaining_work, finished_work,
     # Open output file
     if args.format == 'plain':
         writer = open(training_file, 'w')
-    elif args.format == 'bin':
-        writer = nnue_bin_writer.NNUEBinWriter(training_file)
     else:
-        writer = nnue_binpack_writer.NNUEBinpackWriter(training_file)
+        writer = nnue_bin_writer.NNUEBinWriter(training_file)
 
     # Keep generating positions until the requested number is reached
     work_todo = 0
@@ -329,7 +326,7 @@ if __name__ == "__main__":
             help='the number of positions to generate (default 100000000)')
     parser.add_argument('-o', '--output', type=str,
             help='the name of the output file', required=True)
-    parser.add_argument('--format', choices=['plain', 'bin', 'binpack'],
+    parser.add_argument('--format', choices=['plain', 'bin'],
             default='bin', help='the output format (default bin)')
     parser.add_argument('--seed', type=int,
             help='seed to use for random number generator')

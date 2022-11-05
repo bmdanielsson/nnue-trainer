@@ -233,21 +233,4 @@ void sfen_unpack_bin(uint8_t *data, struct sfen *sfen, struct position *pos)
     sfen->ply = packed->ply;
     sfen->result = packed->result;
     assert(packed->padding == 0xFF);
-
-    make_move(pos, sfen->move);
-}
-
-void sfen_unpack_binpack(uint8_t *data, struct sfen *sfen, struct position *pos)
-{
-    struct compressed_sfen *compressed = (struct compressed_sfen*)data;
-
-    assert(compressed->marker == 0x0000);
-    sfen->pos = *pos;
-    sfen->score = compressed->score;
-    sfen->move = parse_move(compressed->move, &sfen->pos);
-    sfen->ply = pos->fullmove*2 + ((pos->stm == BLACK)?1:0);
-    sfen->result = compressed->result;
-    assert(compressed->padding == 0xFF);
-
-    make_move(pos, sfen->move);
 }
