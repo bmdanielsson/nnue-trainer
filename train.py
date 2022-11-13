@@ -12,7 +12,6 @@ from torch.utils.tensorboard import SummaryWriter
 
 BIN_SAMPLE_SIZE = 40
 OUTPUT_DIR = 'output'
-LOG_DIR = 'logs'
 LATEST_LAST_PATH = ''
 LATEST_BEST_PATH = ''
 LATEST_EPOCH_PATH = ''
@@ -68,18 +67,6 @@ def prepare_output_directory():
     return path
   
   
-def prepare_log_directory():
-    path = LOG_DIR 
-    if not os.path.exists(path):
-        os.mkdir(path)
-    val = 1
-    while os.path.exists(path+'/'+str(val)):
-        val += 1
-    path = path + '/' + str(val)
-    os.mkdir(path)
-    return path
-
-
 def calculate_validation_loss(nnue, val_data_loader, lambda_):
     nnue.eval()
     with torch.no_grad():
@@ -135,10 +122,8 @@ def main(args):
     else:
         main_device = 'cpu'
     
-    # Create directories to store data and logs in
+    # Create directories to store data in
     output_path = prepare_output_directory()
-    if args.log:
-        log_path = prepare_log_directory()
 
     # Print configuration info
     print(f'Device: {main_device}')
@@ -149,13 +134,13 @@ def main(args):
     print(f'Lambda: {args.lambda_}')
     print(f'Validation check interval: {args.val_check_interval}')
     if args.log:
-        print(f'Logs written to: {log_path}')
+        print(f'Logs written to: {output_path}')
     print(f'Data written to: {output_path}')
     print('')
 
     # Create log writer
     if args.log:
-        writer = SummaryWriter(log_path)
+        writer = SummaryWriter(output_path)
 
     # Create data loaders
     train_size = int(os.path.getsize(args.train)/BIN_SAMPLE_SIZE)
