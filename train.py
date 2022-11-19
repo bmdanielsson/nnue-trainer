@@ -155,12 +155,12 @@ def main(args):
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=1, verbose=True, min_lr=1e-6)
 
     # Main training loop
+    start = time.monotonic()
     num_batches = len(train_data_loader)
     epoch = 0
     running_train_loss = 0.0
     while True:
         best_val_loss = 1000000.0
-        start = time.monotonic()
 
         for k, sample in enumerate(train_data_loader):
             train_loss = train_step(nnue, sample, optimizer, args.lambda_, epoch, k, num_batches)
