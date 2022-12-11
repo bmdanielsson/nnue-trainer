@@ -7,6 +7,8 @@ import os.path
 import subprocess
 import shutil
 
+import quantize
+
 BASE_PATH='base'
 TEST_PATH='test'
 ENGINE_NAME='marvin'
@@ -17,19 +19,23 @@ def add_engine_options(command, engine, net):
     if net:
         name = os.path.basename(net)
         name = os.path.splitext(name)[0]
+        name = os.path.splitext(name)[0]
         command.append('name=' + name)
         command.append('option.EvalFile=' + net)
     command.append('option.UseNNUE=true')
 
 
 def run_match(args, test_net):
+    net_path = os.path.abspath(test_net)
+    quant_net_path = net_path + ".nnue"
+    quantize.quantization(net_path, quant_net_path)
+
     command = []
 
     command.append('c-chess-cli')
 
-    test_net_abs_path = os.path.abspath(test_net)
     add_engine_options(command, BASE_PATH+'/'+ENGINE_NAME, None)
-    add_engine_options(command, TEST_PATH+'/'+ENGINE_NAME, test_net_abs_path)
+    add_engine_options(command, TEST_PATH+'/'+ENGINE_NAME, quant_net_path)
 
     command.append('-each')
     command.append('tc=10+0.1')
@@ -54,12 +60,14 @@ def run_match(args, test_net):
 
     subprocess.call(command)
 
+    os.remove(quant_net_path)
+
 
 def main(args):
     # Find all .nnue files in the net folder
     nnue_files = [f for f in os.listdir(args.net_dir)
                        if (os.path.isfile(os.path.join(args.net_dir, f)) and
-                           os.path.splitext(f)[1] == '.nnue')]
+                           os.path.splitext(f)[1] == '.bin')]
 
     # Run a match with each net
     for nnue in nnue_files:

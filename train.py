@@ -35,7 +35,7 @@ def save_model(nnue, output_path, epoch, idx, val_loss, new_best, epoch_end):
     # Save the model as the latest version 
     if os.path.exists(LATEST_LAST_PATH):
         os.remove(LATEST_LAST_PATH) 
-    last_path = f'{output_path}/last_epoch_{epoch}_iter_{idx+1}_loss_{val_loss:.5f}.nnue'
+    last_path = f'{output_path}/last_epoch_{epoch}_iter_{idx+1}_loss_{val_loss:.5f}.bin'
     LATEST_LAST_PATH = last_path
     write_model(nnue, last_path)
 
@@ -43,13 +43,13 @@ def save_model(nnue, output_path, epoch, idx, val_loss, new_best, epoch_end):
     if new_best and not epoch_end:
         if os.path.exists(LATEST_BEST_PATH):
             os.remove(LATEST_BEST_PATH) 
-        best_path = f'{output_path}/best_epoch_{epoch}_iter_{idx+1}_loss_{val_loss:.5f}.nnue'
+        best_path = f'{output_path}/best_epoch_{epoch}_iter_{idx+1}_loss_{val_loss:.5f}.bin'
         LATEST_BEST_PATH = best_path
         write_model(nnue, best_path)
 
     # Save the model as the final version for this epoch
     if epoch_end: 
-        epoch_path = f'{output_path}/epoch_{epoch}_loss_{val_loss:.5f}.nnue'
+        epoch_path = f'{output_path}/epoch_{epoch}_loss_{val_loss:.5f}.bin'
         LATEST_EPOCH_PATH = epoch_path
         LATEST_BEST_PATH = ''
         write_model(nnue, epoch_path)
