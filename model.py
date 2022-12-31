@@ -6,11 +6,11 @@ from torch import nn
 import torch.nn.functional as F
 
 # The version of the export format
-EXPORT_FORMAT_VERSION = 0x00000005
+EXPORT_FORMAT_VERSION = 0x00000007
 
 # 3 layer fully connected network
 L1 = 256
-L2 = 16
+L2 = 8
 L3 = 16
 
 class NNUE(nn.Module):
