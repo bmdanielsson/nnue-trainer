@@ -196,7 +196,7 @@ if __name__ == '__main__':
     parser.add_argument('train', help='Training data (.bin)')
     parser.add_argument('val', help='Validation data (.bin)')
     parser.add_argument('--lambda', default=1.0, type=float, dest='lambda_', help='lambda=1.0 = train on evaluations, lambda=0.0 = train on game results, interpolates between (default=1.0)')
-    parser.add_argument('--batch-size', default=8192, type=int, help='Number of positions per batch / per iteration (default=8192)')
+    parser.add_argument('--batch-size', default=16384, type=int, help='Number of positions per batch / per iteration (default=16384)')
     parser.add_argument('--use-factorizer', action='store_true', help='Use factorizer when training')
     parser.add_argument('--val-check-interval', default=2000, type=int, help='How often to check validation loss (default=2000)')
     parser.add_argument('--log', action='store_true', help='Enable logging during training')
