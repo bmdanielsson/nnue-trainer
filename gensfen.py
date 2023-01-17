@@ -114,7 +114,10 @@ def play_game(writer, duplicates, hasher, pos_left, args):
     engine_black.configure(options)
 
     # Setup search limit
-    limit = chess.engine.Limit(depth=args.depth, time=MAX_TIME)
+    if args.depth:
+        limit = chess.engine.Limit(depth=args.depth, time=MAX_TIME)
+    else:
+        limit = chess.engine.Limit(nodes=args.nodes, time=MAX_TIME)
 
     # Let the engine play against itself and a record all positions
     resign_count = 0
@@ -316,8 +319,10 @@ def main(args):
 if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--depth', type=int, default=8,
-            help='the depth to search each position to (deafult 8)')
+    parser.add_argument('-d', '--depth', type=int,
+            help='the depth to search each position to')
+    parser.add_argument('-s', '--nodes', type=int,
+            help='the number of nodes to search each position for')
     parser.add_argument('-e', '--engine', type=str, required=True,
             help='the path to the engine')
     parser.add_argument('-t', '--nthreads', type=int, default='1',
@@ -334,11 +339,20 @@ if __name__ == "__main__":
             help="Probability of using a FRC starting position (default 0.0)")
 
     args = parser.parse_args()
+    if not args.depth and not args.nodes:
+        print('Error: either --depth or --nodes must be specified')
+        sys.exit(1)
+    if args.depth and args.nodes:
+        print('Error: both --depth and --nodes cannot be specified')
+        sys.exit(1)
 
     print(f'Engine: {args.engine}')
     print(f'Output format: {args.format}')
     print(f'Number of positions: {args.npositions}')
-    print(f'Depth: {args.depth}')
+    if args.depth:
+        print(f'Depth: {args.depth}')
+    else:
+        print(f'Nodes: {args.nodes}')
     print(f'FRC probabliity: {args.frc_prob}')
     print('')
 
