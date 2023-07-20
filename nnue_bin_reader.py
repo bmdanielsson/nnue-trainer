@@ -131,6 +131,16 @@ def read_move(data):
 
     if special == 1:
         move = chess.Move(from_sq, to_sq, promotion+2)
+    elif special == 3:
+        if to_sq == chess.A1:
+            to_sq = chess.C1
+        elif to_sq == chess.H1:
+            to_sq = chess.G1
+        elif to_sq == chess.A8:
+            to_sq = chess.C8
+        elif to_sq == chess.H8:
+            to_sq = chess.G8
+        move = chess.Move(from_sq, to_sq)
     else:
         move = chess.Move(from_sq, to_sq)
 
@@ -175,7 +185,7 @@ class NNUEBinReader:
         # Read and skip one byte which is just padding
         np.fromfile(self.fh, dtype='uint8', count=1)
 
-        return (board, score, move, ply, result)
+        return (board, score, move, ply, int(result))
 
 
     def get_raw_sample(self):
