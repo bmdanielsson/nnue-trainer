@@ -65,7 +65,7 @@ SparseBatchPtr = ctypes.POINTER(SparseBatch)
 
 create_sparse_batch_stream = dll.create_sparse_batch_stream
 create_sparse_batch_stream.restype = ctypes.c_void_p
-create_sparse_batch_stream.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.c_int, ctypes.c_int]
+create_sparse_batch_stream.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.c_int]
 destroy_sparse_batch_stream = dll.destroy_sparse_batch_stream
 destroy_sparse_batch_stream.argtypes = [ctypes.c_void_p]
 fetch_next_sparse_batch = dll.fetch_next_sparse_batch
@@ -75,8 +75,7 @@ destroy_sparse_batch = dll.destroy_sparse_batch
 
 
 class SparseBatchProvider:
-    def __init__(self, filename, nsamples, batch_size, use_factorizer,
-                 device='cpu'):
+    def __init__(self, filename, nsamples, batch_size, device='cpu'):
         self.create_stream = create_sparse_batch_stream
         self.destroy_stream = destroy_sparse_batch_stream
         self.fetch_next = fetch_next_sparse_batch
@@ -84,11 +83,9 @@ class SparseBatchProvider:
         self.filename = filename.encode('utf-8')
         self.nsamples = nsamples
         self.batch_size = batch_size
-        self.use_factorizer = use_factorizer
         self.device = device
 
-        self.stream = self.create_stream(self.filename, nsamples, batch_size,
-                                         use_factorizer)
+        self.stream = self.create_stream(self.filename, nsamples, batch_size)
 
 
     def __iter__(self):
@@ -114,13 +111,12 @@ class SparseBatchProvider:
 
 
 class SparseBatchDataset(torch.utils.data.IterableDataset):
-    def __init__(self, filename, nsamples, batch_size, use_factorizer,
-                 num_batches, device='cpu'):
+    def __init__(self, filename, nsamples, batch_size, num_batches,
+                 device='cpu'):
         super(SparseBatchDataset).__init__()
         self.filename = filename
         self.nsamples = nsamples
         self.batch_size = batch_size
-        self.use_factorizer = use_factorizer
         self.device = device
         self.num_batches = num_batches
 
@@ -131,5 +127,4 @@ class SparseBatchDataset(torch.utils.data.IterableDataset):
 
     def __iter__(self):
         return SparseBatchProvider(self.filename, self.nsamples,
-                                   self.batch_size, self.use_factorizer,
-                                   device=self.device)
+                                   self.batch_size, device=self.device)

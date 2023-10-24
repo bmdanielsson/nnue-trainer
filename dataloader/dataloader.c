@@ -32,10 +32,8 @@
 #define NUM_SQ                    64
 #define NUM_PT                    10
 #define NUM_PLANES                (NUM_SQ*NUM_PT)
-#define NUM_REAL_INPUTS           (NUM_PLANES*NUM_SQ)
-#define NUM_VIRTUAL_INPUTS        (NUM_PT*NUM_SQ)
+#define NUM_INPUTS                (NUM_PLANES*NUM_SQ)
 #define MAX_ACTIVE_FEATURES       32
-#define MAX_PIECE_FACTOR_FEATURES 32
 
 static uint32_t piece2index[NSIDES][NPIECES] = {
     {0*NSQUARES, 1*NSQUARES, 2*NSQUARES, 3*NSQUARES, 4*NSQUARES,
@@ -67,25 +65,15 @@ static int transform_square(int sq, int side)
     return sq;
 }
 
-static int real_feature_index(int sq, int piece, int king_sq, int side)
+static int feature_index(int sq, int piece, int king_sq, int side)
 {
     sq = transform_square(sq, side);
     return sq + piece2index[side][piece] + NUM_PT*NUM_SQ*king_sq;
 }
 
-static int virtual_piece_feature_index(int sq, int piece, int offset, int side)
-{
-    int piece_idx;
-
-    sq = transform_square(sq, side);
-    piece_idx = PIECE_TYPE(piece) + (PIECE_COLOR(piece) != side);
-    return offset + piece_idx*NSQUARES + sq;
-}
-
-static void add_real_features_to_batch(int sample_idx,
-                                       struct sfen *sfen, int *counter,
-                                       int *features, float *values,
-                                       int side)
+static void add_features_to_batch(int sample_idx, struct sfen *sfen,
+                                  int *counter, int *features, float *values,
+                                  int side)
 {
     struct position *pos = &sfen->pos;
     uint32_t index;
@@ -100,7 +88,7 @@ static void add_real_features_to_batch(int sample_idx,
     nfeatures = 0;
     for (k=0;k<pos->npieces;k++) {
         sq = pos->pieces[k];
-        index = real_feature_index(sq, pos->board[sq], king_sq, side);
+        index = feature_index(sq, pos->board[sq], king_sq, side);
         indices[nfeatures++] = index;
     }
 
@@ -115,70 +103,24 @@ static void add_real_features_to_batch(int sample_idx,
     }
 }
 
-static void add_virtual_piece_features_to_batch(int sample_idx, int offset,
-                                                struct sfen *sfen, int *counter,
-                                                int *features, float *values,
-                                                int side)
-{
-    struct position *pos = &sfen->pos;
-    uint32_t index;
-    int nfeatures;
-    int indices[32];
-    int k;
-    int sq;
-
-    nfeatures = 0;
-    for (k=0;k<pos->npieces;k++) {
-        sq = pos->pieces[k];
-        index = virtual_piece_feature_index(sq, pos->board[sq], offset, side);
-        indices[nfeatures++] = index;
-    }
-
-    qsort(indices, nfeatures, sizeof(int), cmp_int);
-
-    for (k=0;k<nfeatures;k++) {
-        index = (*counter)*2;
-        features[index] = sample_idx;
-        features[index+1] = indices[k];
-        values[*counter] = 1.0f;
-        (*counter)++;
-    }
-}
-
-static void add_sample_to_batch(bool use_factorizer, int sample_idx,
-                                struct sparse_batch *batch, struct sfen *sfen)
+static void add_sample_to_batch(int sample_idx, struct sparse_batch *batch,
+                                struct sfen *sfen)
 {
     batch->is_white[sample_idx] = (float)(sfen->pos.stm == WHITE);
     batch->outcome[sample_idx] = (float)((sfen->result + 1.0f)/2.0f);
     batch->score[sample_idx] = (float)sfen->score;
 
-    add_real_features_to_batch(sample_idx, sfen,
-                               &batch->num_active_white_features,
-                               batch->white, batch->white_values,
-                               WHITE);
-    add_real_features_to_batch(sample_idx, sfen,
-                               &batch->num_active_black_features,
-                               batch->black, batch->black_values,
-                               BLACK);
-    if (use_factorizer) {
-        add_virtual_piece_features_to_batch(sample_idx, NUM_REAL_INPUTS, sfen,
-                                            &batch->num_active_white_features,
-                                            batch->white, batch->white_values,
-                                            WHITE);
-        add_virtual_piece_features_to_batch(sample_idx, NUM_REAL_INPUTS, sfen,
-                                            &batch->num_active_black_features,
-                                            batch->black, batch->black_values,
-                                            BLACK);
-    }
+    add_features_to_batch(sample_idx, sfen, &batch->num_active_white_features,
+                          batch->white, batch->white_values, WHITE);
+    add_features_to_batch(sample_idx, sfen, &batch->num_active_black_features,
+                          batch->black, batch->black_values, BLACK);
 }
 
 EXPORT struct stream* CDECL create_sparse_batch_stream(const char* filename,
                                                        uint64_t nsamples,
-                                                       int batch_size,
-                                                       int use_factorizer)
+                                                       int batch_size)
 {
-    return stream_create((char*)filename, nsamples, batch_size,
-                         use_factorizer != 0);
+    return stream_create((char*)filename, nsamples, batch_size);
 }
 
 EXPORT void CDECL destroy_sparse_batch_stream(struct stream *stream)
@@ -201,9 +143,6 @@ EXPORT struct sparse_batch* CDECL fetch_next_sparse_batch(struct stream *stream)
 
     /* Calculate the number of active features */
     nactive = MAX_ACTIVE_FEATURES;
-    if (stream->use_factorizer) {
-        nactive += MAX_PIECE_FACTOR_FEATURES;
-    }
 
     /* Read samples */
     samples = malloc(stream->batch_size*sizeof(struct sfen));
@@ -214,10 +153,7 @@ EXPORT struct sparse_batch* CDECL fetch_next_sparse_batch(struct stream *stream)
     /* Create batch */
     batch = malloc(sizeof(struct sparse_batch));
     batch->size = nsamples;
-    batch->num_inputs = NUM_REAL_INPUTS;
-    if (stream->use_factorizer) {
-        batch->num_inputs += NUM_VIRTUAL_INPUTS;
-    }
+    batch->num_inputs = NUM_INPUTS;
     batch->num_active_white_features = 0;
     batch->num_active_black_features = 0;
     batch->is_white = malloc(sizeof(float)*nsamples);
@@ -232,7 +168,7 @@ EXPORT struct sparse_batch* CDECL fetch_next_sparse_batch(struct stream *stream)
 
     /* Add all samples to the batch  */
     for (k=0;k<nsamples;k++) {
-        add_sample_to_batch(stream->use_factorizer, k, batch, &samples[k]);
+        add_sample_to_batch(k, batch, &samples[k]);
     }
     free(samples);
 
@@ -271,7 +207,7 @@ int main(int argc, char *argv[])
     }
 
     if (!strcmp(argv[1], "-t")) {
-        stream = create_sparse_batch_stream(argv[2], atoi(argv[3]), 8192, 0);
+        stream = create_sparse_batch_stream(argv[2], atoi(argv[3]), 8192);
         for (k=0;k<1000;k++) {
             batch = fetch_next_sparse_batch(stream);
             destroy_sparse_batch(batch);
@@ -279,7 +215,7 @@ int main(int argc, char *argv[])
         destroy_sparse_batch_stream(stream);
     } else if (!strcmp(argv[1], "-d")) {
         samples = malloc(8192*sizeof(struct sfen));
-        stream = stream_create(argv[2], atoi(argv[3]), 8192, false);
+        stream = stream_create(argv[2], atoi(argv[3]), 8192);
         do {
             nsamples = stream_get_samples(stream, samples);
             for (k=0;k<nsamples;k++) {

@@ -101,12 +101,12 @@ def train_step(nnue, sample, optimizer, lambda_, epoch, idx, num_batches):
   
   
 def create_data_loaders(train_filename, val_filename, epoch_size, val_size,
-                        batch_size, use_factorizer, main_device):
+                        batch_size, main_device):
     train_dataset = nnue_dataset.SparseBatchDataset(train_filename, epoch_size,
-            batch_size, use_factorizer,
+            batch_size,
             (epoch_size + batch_size - 1) // batch_size, device=main_device)
     val_dataset = nnue_dataset.SparseBatchDataset(val_filename, val_size,
-            batch_size, use_factorizer,
+            batch_size,
             (val_size + batch_size - 1) // batch_size, device=main_device)
 
     train = DataLoader(train_dataset, batch_size=None, batch_sampler=None)
@@ -130,7 +130,6 @@ def main(args):
     print(f'Training set: {args.train}')
     print(f'Validation set: {args.val}')
     print(f'Batch size: {args.batch_size}')
-    print(f'Using factorizer: {args.use_factorizer}')
     print(f'Lambda: {args.lambda_}')
     print(f'Validation check interval: {args.val_check_interval}')
     if args.log:
@@ -145,10 +144,10 @@ def main(args):
     # Create data loaders
     train_size = int(os.path.getsize(args.train)/BIN_SAMPLE_SIZE)
     val_size = int(os.path.getsize(args.val)/BIN_SAMPLE_SIZE)
-    train_data_loader, val_data_loader = create_data_loaders(args.train, args.val, train_size, val_size, args.batch_size, args.use_factorizer, main_device)
+    train_data_loader, val_data_loader = create_data_loaders(args.train, args.val, train_size, val_size, args.batch_size, main_device)
 
     # Create model
-    nnue = M.NNUE(args.use_factorizer, feature_set=halfkp.Features()).to(main_device)
+    nnue = M.NNUE(feature_set=halfkp.Features()).to(main_device)
 
     # Configure optimizer
     optimizer = ranger.Ranger(nnue.parameters(), lr=1e-3)
@@ -197,7 +196,6 @@ if __name__ == '__main__':
     parser.add_argument('val', help='Validation data (.bin)')
     parser.add_argument('--lambda', default=1.0, type=float, dest='lambda_', help='lambda=1.0 = train on evaluations, lambda=0.0 = train on game results, interpolates between (default=1.0)')
     parser.add_argument('--batch-size', default=16384, type=int, help='Number of positions per batch / per iteration (default=16384)')
-    parser.add_argument('--use-factorizer', action='store_true', help='Use factorizer when training')
     parser.add_argument('--val-check-interval', default=2000, type=int, help='How often to check validation loss (default=2000)')
     parser.add_argument('--log', action='store_true', help='Enable logging during training')
     args = parser.parse_args()

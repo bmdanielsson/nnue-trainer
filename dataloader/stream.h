@@ -35,7 +35,6 @@ struct stream {
     uint64_t iter;
 
     int batch_size;
-    bool use_factorizer;
     uint64_t nsamples;
     uint64_t nread;
 
@@ -49,8 +48,7 @@ struct stream {
     uint32_t nentries;
 };
 
-struct stream* stream_create(char *filename, uint64_t nsamples, int batch_size,
-                             bool use_factorizer);
+struct stream* stream_create(char *filename, uint64_t nsamples, int batch_size);
 
 void stream_destroy(struct stream *stream);
 

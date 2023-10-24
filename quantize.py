@@ -70,7 +70,7 @@ def quantization(source, target):
     # Read all layers
     with open(source, 'rb') as f:
         version = read_version(f)
-        halfkx = read_layer(f, halfkp.NUM_REAL_FEATURES, model.L1)
+        halfkx = read_layer(f, halfkp.NUM_FEATURES, model.L1)
         linear1 = read_layer(f, model.L1*2, model.L2)
         linear2 = read_layer(f, model.L2, model.L3)
         output = read_layer(f, model.L3, 1)
