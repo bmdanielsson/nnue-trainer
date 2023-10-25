@@ -1,7 +1,6 @@
 import argparse
 import model as M
 import nnue_dataset
-import halfkp
 import torch
 import ranger
 import time
@@ -147,7 +146,7 @@ def main(args):
     train_data_loader, val_data_loader = create_data_loaders(args.train, args.val, train_size, val_size, args.batch_size, main_device)
 
     # Create model
-    nnue = M.NNUE(feature_set=halfkp.Features()).to(main_device)
+    nnue = M.NNUE().to(main_device)
 
     # Configure optimizer
     optimizer = ranger.Ranger(nnue.parameters(), lr=1e-3)
@@ -191,7 +190,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Train a NNUE style network.')
+    parser = argparse.ArgumentParser(description='Train a NNUE network.')
     parser.add_argument('train', help='Training data (.bin)')
     parser.add_argument('val', help='Validation data (.bin)')
     parser.add_argument('--lambda', default=1.0, type=float, dest='lambda_', help='lambda=1.0 = train on evaluations, lambda=0.0 = train on game results, interpolates between (default=1.0)')

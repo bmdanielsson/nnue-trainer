@@ -1,12 +1,16 @@
 import chess
-import halfkp
 import torch
 import struct
 from torch import nn
 import torch.nn.functional as F
 
 # The version of the export format
-EXPORT_FORMAT_VERSION = 0x00000007
+EXPORT_FORMAT_VERSION = 0x00000008
+
+# Number of inputs
+NUM_SQ = 64
+NUM_PT = 12
+NUM_INPUTS = NUM_SQ*NUM_PT
 
 # 3 layer fully connected network
 L1 = 256
@@ -14,10 +18,9 @@ L2 = 8
 L3 = 16
 
 class NNUE(nn.Module):
-    def __init__(self, feature_set=halfkp.Features()):
+    def __init__(self):
         super(NNUE, self).__init__()
-        self.feature_set = feature_set
-        self.input = nn.Linear(feature_set.get_num_inputs(), L1)
+        self.input = nn.Linear(NUM_INPUTS, L1)
         self.l1 = nn.Linear(2 * L1, L2)
         self.l2 = nn.Linear(L2, L3)
         self.output = nn.Linear(L3, 1)
@@ -26,7 +29,7 @@ class NNUE(nn.Module):
     def forward(self, us, them, w_in, b_in):
         w = self.input(w_in)
         b = self.input(b_in)
-        l0_ = (us * torch.cat([w, b], dim=1)) + (them * torch.cat([b, w], dim=1))
+        l0_ = (us*torch.cat([w, b], dim=1)) + (them*torch.cat([b, w], dim=1))
         l0_ = torch.clamp(l0_, 0.0, 1.0)
         l1_ = torch.clamp(self.l1(l0_), 0.0, 1.0)
         l2_ = torch.clamp(self.l2(l1_), 0.0, 1.0)

@@ -131,10 +131,10 @@ void read_position(uint8_t *data, int *cursor, struct position *pos)
     /* King positions */
     sq = read_bits(data, cursor, 6);
     pos->board[sq] = WHITE_KING;
-    pos->kings[WHITE] = sq;
+    pos->pieces[pos->npieces++] = sq;
     sq = read_bits(data, cursor, 6);
     pos->board[sq] = BLACK_KING;
-    pos->kings[BLACK] = sq;
+    pos->pieces[pos->npieces++] = sq;
 
     /* Piece positions */
     for (rank=RANK_8;rank>=RANK_1;rank--) {

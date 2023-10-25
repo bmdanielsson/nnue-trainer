@@ -30,9 +30,8 @@
 #include "board.h"
 
 #define NUM_SQ                    64
-#define NUM_PT                    10
-#define NUM_PLANES                (NUM_SQ*NUM_PT)
-#define NUM_INPUTS                (NUM_PLANES*NUM_SQ)
+#define NUM_PT                    12
+#define NUM_INPUTS                (NUM_SQ*NUM_PT)
 #define MAX_ACTIVE_FEATURES       32
 
 static uint32_t piece2index[NSIDES][NPIECES] = {
@@ -65,10 +64,10 @@ static int transform_square(int sq, int side)
     return sq;
 }
 
-static int feature_index(int sq, int piece, int king_sq, int side)
+static int feature_index(int sq, int piece, int side)
 {
     sq = transform_square(sq, side);
-    return sq + piece2index[side][piece] + NUM_PT*NUM_SQ*king_sq;
+    return sq + piece2index[side][piece];
 }
 
 static void add_features_to_batch(int sample_idx, struct sfen *sfen,
@@ -77,18 +76,15 @@ static void add_features_to_batch(int sample_idx, struct sfen *sfen,
 {
     struct position *pos = &sfen->pos;
     uint32_t index;
-    int king_sq;
     int nfeatures;
     int indices[32];
     int k;
     int sq;
 
-    king_sq = transform_square(pos->kings[side], side);
-
     nfeatures = 0;
     for (k=0;k<pos->npieces;k++) {
         sq = pos->pieces[k];
-        index = feature_index(sq, pos->board[sq], king_sq, side);
+        index = feature_index(sq, pos->board[sq], side);
         indices[nfeatures++] = index;
     }
 

@@ -159,8 +159,7 @@ enum {
 /* Internal representation of a chess position */
 struct position {
     uint8_t board[NSQUARES];
-    uint8_t kings[NSIDES];
-    uint8_t pieces[30];
+    uint8_t pieces[32];
     uint8_t npieces;
     uint8_t stm;
     uint8_t castle;
