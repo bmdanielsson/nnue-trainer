@@ -28,5 +28,3 @@ Then, go to http://localhost:6006/
 
 # Acknowledgements
 * Training code is based on https://github.com/glinscott/nnue-pytorch
-* Ranger optimizer is taken from https://github.com/lessw2020/Ranger-Deep-Learning-Optimizer
-

@@ -2,7 +2,6 @@ import argparse
 import model as M
 import nnue_dataset
 import torch
-import ranger
 import time
 import os.path
 from datetime import timedelta
@@ -149,8 +148,8 @@ def main(args):
     nnue = M.NNUE().to(main_device)
 
     # Configure optimizer
-    optimizer = ranger.Ranger(nnue.parameters(), lr=1e-3)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=1, verbose=True, min_lr=1e-6)
+    optimizer = torch.optim.RAdam(nnue.parameters(), lr=1e-3, betas=(.95, 0.999), eps=1e-5, weight_decay=0)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=1, verbose=True, min_lr=1e-6)
 
     # Main training loop
     start = time.monotonic()
