@@ -1,4 +1,3 @@
-import chess
 import torch
 import struct
 from torch import nn
