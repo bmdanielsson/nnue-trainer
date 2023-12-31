@@ -3,6 +3,7 @@ import model as M
 import nnue_dataset
 import torch
 import time
+import os
 import os.path
 from datetime import timedelta
 from torch.utils.data import DataLoader, Dataset
@@ -10,9 +11,21 @@ from torch.utils.tensorboard import SummaryWriter
 
 BIN_SAMPLE_SIZE = 40
 OUTPUT_DIR = 'output'
-LATEST_LAST_PATH = ''
-LATEST_BEST_PATH = ''
-LATEST_EPOCH_PATH = ''
+
+
+def filter_saved_models(saved_models, top_n):
+    # Sore saved models based on loss
+    saved_models.sort()
+
+    # Rename the best saved models (strip the .tmp extension)
+    for idx in range(top_n):
+        old_path = saved_models[idx][1]
+        new_path = os.path.splitext(old_path)[0]
+        os.rename(old_path, new_path)
+
+    # Remove remaining saved models for this epoch
+    for idx in range(top_n, len(saved_models)):
+        os.remove(saved_models[idx][1])
 
 
 def write_model(nnue, path):
@@ -25,32 +38,14 @@ def write_model(nnue, path):
         f.write(buf)
 
 
-def save_model(nnue, output_path, epoch, idx, val_loss, new_best, epoch_end):
-    global LATEST_LAST_PATH
-    global LATEST_BEST_PATH
-    global LATEST_EPOCH_PATH
+def save_model(nnue, output_path, epoch, idx, val_loss):
+    # Construct the full path
+    path = f'{output_path}/epoch_{epoch}_iter_{idx+1}_loss_{val_loss:.5f}.bin.tmp'
 
-    # Save the model as the latest version 
-    if os.path.exists(LATEST_LAST_PATH):
-        os.remove(LATEST_LAST_PATH) 
-    last_path = f'{output_path}/last_epoch_{epoch}_iter_{idx+1}_loss_{val_loss:.5f}.bin'
-    LATEST_LAST_PATH = last_path
-    write_model(nnue, last_path)
+    # Save the model
+    write_model(nnue, path)
 
-    # Save the model as the new best version
-    if new_best and not epoch_end:
-        if os.path.exists(LATEST_BEST_PATH):
-            os.remove(LATEST_BEST_PATH) 
-        best_path = f'{output_path}/best_epoch_{epoch}_iter_{idx+1}_loss_{val_loss:.5f}.bin'
-        LATEST_BEST_PATH = best_path
-        write_model(nnue, best_path)
-
-    # Save the model as the final version for this epoch
-    if epoch_end: 
-        epoch_path = f'{output_path}/epoch_{epoch}_loss_{val_loss:.5f}.bin'
-        LATEST_EPOCH_PATH = epoch_path
-        LATEST_BEST_PATH = ''
-        write_model(nnue, epoch_path)
+    return path
 
 
 def prepare_output_directory():
@@ -158,6 +153,7 @@ def main(args):
     running_train_loss = 0.0
     while True:
         best_val_loss = 1000000.0
+        saved_models = []
 
         for k, sample in enumerate(train_data_loader):
             train_loss = train_step(nnue, sample, optimizer, args.lambda_, epoch, k, num_batches)
@@ -165,11 +161,10 @@ def main(args):
           
             if k%args.val_check_interval == (args.val_check_interval-1):
                 val_loss = calculate_validation_loss(nnue, val_data_loader, args.lambda_)
-                new_best = False
                 if (val_loss < best_val_loss):
-                    new_best = True
                     best_val_loss = val_loss
-                save_model(nnue, output_path, epoch, k, val_loss, new_best, False)
+                path = save_model(nnue, output_path, epoch, k, val_loss)
+                saved_models.append((val_loss, path))
                 if args.log:
                     writer.add_scalar('training loss', running_train_loss/args.val_check_interval, epoch*num_batches + k)
                     writer.add_scalar('validation loss', val_loss, epoch*num_batches + k)
@@ -180,10 +175,15 @@ def main(args):
         if (val_loss < best_val_loss):
             new_best = True
             best_val_loss = val_loss
-        save_model(nnue, output_path, epoch, num_batches-1, val_loss, new_best, True)
+        path = save_model(nnue, output_path, epoch, num_batches-1, val_loss)
+        saved_models.append((val_loss, path))
         stop = time.monotonic()
         print(f' ({timedelta(seconds=stop-start)})')
 
+        # Only keep the best snapshots (based on validation loss)
+        filter_saved_models(saved_models, args.top_n)
+
+        # Update learning rate scheduler
         scheduler.step(best_val_loss)
         epoch += 1
 
@@ -196,6 +196,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', default=16384, type=int, help='Number of positions per batch / per iteration (default=16384)')
     parser.add_argument('--val-check-interval', default=2000, type=int, help='How often to check validation loss (default=2000)')
     parser.add_argument('--log', action='store_true', help='Enable logging during training')
+    parser.add_argument('--top-n', default=2, type=int, help='Number of models to save for each epoch (default=2)')
     args = parser.parse_args()
 
     main(args)
