@@ -61,12 +61,12 @@ class NNUE(nn.Module):
         self.serialize_linear_layer(buf, self.output)
 
 
-def loss_function(lambda_, pred, batch):
+def loss_function(wdl, pred, batch):
     us, them, white, black, outcome, score = batch
     
     wdl_eval_model = (pred*600.0/361).sigmoid()
     wdl_eval_target = (score/410).sigmoid()
 
-    wdl_value_target  = wdl_eval_target * lambda_ + outcome * (1.0 - lambda_)
+    wdl_value_target = wdl_eval_target * (1.0 - wdl) + outcome * wdl
     
     return torch.abs(wdl_value_target  - wdl_eval_model).square().mean()

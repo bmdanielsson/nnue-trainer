@@ -60,14 +60,14 @@ def prepare_output_directory():
     return path
   
   
-def calculate_validation_loss(nnue, val_data_loader, lambda_):
+def calculate_validation_loss(nnue, val_data_loader, wdl):
     nnue.eval()
     with torch.no_grad():
         val_loss = []
         for k, sample in enumerate(val_data_loader):
             us, them, white, black, outcome, score = sample
             pred = nnue(us, them, white, black)
-            loss = M.loss_function(lambda_, pred, sample)
+            loss = M.loss_function(wdl, pred, sample)
             val_loss.append(loss)
   
         val_loss = torch.mean(torch.tensor(val_loss))
@@ -76,11 +76,11 @@ def calculate_validation_loss(nnue, val_data_loader, lambda_):
     return val_loss
   
   
-def train_step(nnue, sample, optimizer, lambda_, epoch, idx, num_batches):
+def train_step(nnue, sample, optimizer, wdl, epoch, idx, num_batches):
     us, them, white, black, outcome, score = sample
 
     pred = nnue(us, them, white, black)
-    loss = M.loss_function(lambda_, pred, sample)
+    loss = M.loss_function(wdl, pred, sample)
     loss.backward()
     optimizer.step()
     nnue.zero_grad()
@@ -123,7 +123,7 @@ def main(args):
     print(f'Training set: {args.train}')
     print(f'Validation set: {args.val}')
     print(f'Batch size: {args.batch_size}')
-    print(f'Lambda: {args.lambda_}')
+    print(f'WDL: {args.wdl}')
     print(f'Validation check interval: {args.val_check_interval}')
     if args.log:
         print(f'Logs written to: {output_path}')
@@ -156,11 +156,11 @@ def main(args):
         saved_models = []
 
         for k, sample in enumerate(train_data_loader):
-            train_loss = train_step(nnue, sample, optimizer, args.lambda_, epoch, k, num_batches)
+            train_loss = train_step(nnue, sample, optimizer, args.wdl, epoch, k, num_batches)
             running_train_loss += train_loss.item()
           
             if k%args.val_check_interval == (args.val_check_interval-1):
-                val_loss = calculate_validation_loss(nnue, val_data_loader, args.lambda_)
+                val_loss = calculate_validation_loss(nnue, val_data_loader, args.wdl)
                 if (val_loss < best_val_loss):
                     best_val_loss = val_loss
                 path = save_model(nnue, output_path, epoch, k, val_loss)
@@ -170,7 +170,7 @@ def main(args):
                     writer.add_scalar('validation loss', val_loss, epoch*num_batches + k)
                 running_train_loss = 0.0
     
-        val_loss = calculate_validation_loss(nnue, val_data_loader, args.lambda_)
+        val_loss = calculate_validation_loss(nnue, val_data_loader, args.wdl)
         new_best = False
         if (val_loss < best_val_loss):
             new_best = True
@@ -192,7 +192,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train a NNUE network.')
     parser.add_argument('train', help='Training data (.bin)')
     parser.add_argument('val', help='Validation data (.bin)')
-    parser.add_argument('--lambda', default=1.0, type=float, dest='lambda_', help='lambda=1.0 = train on evaluations, lambda=0.0 = train on game results, interpolates between (default=1.0)')
+    parser.add_argument('--wdl', default=1.0, type=float, help='wdl=0.0 = train on evaluations, wdl=1.0 = train on game results, interpolates between (default=1.0)')
     parser.add_argument('--batch-size', default=16384, type=int, help='Number of positions per batch / per iteration (default=16384)')
     parser.add_argument('--val-check-interval', default=2000, type=int, help='How often to check validation loss (default=2000)')
     parser.add_argument('--log', action='store_true', help='Enable logging during training')
