@@ -184,7 +184,7 @@ def main(args):
         stop = time.monotonic()
         print(f' ({timedelta(seconds=stop-start)})')
 
-        scheduler.step(val_loss)
+        scheduler.step(best_val_loss)
         epoch += 1
 
 
