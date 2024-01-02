@@ -39,7 +39,7 @@ def run_match(args, test_net):
     add_engine_options(command, TEST_PATH+'/'+ENGINE_NAME, quant_net_path)
 
     command.append('-each')
-    command.append('tc=10+0.1')
+    command.append(f'tc={args.time}+{args.increment}')
     command.append('-concurrency')
     command.append(str(args.concurrency))
     command.append('-repeat')
@@ -92,15 +92,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--net-dir', type=str, required=True,
                     help='folder containing nets to test')
-    parser.add_argument('-c', '--concurrency', type=int, default='1',
+    parser.add_argument('-c', '--concurrency', type=int, default=1,
                     help='the number of games to run in parallell (default 1)')
-    parser.add_argument('-g', '--games', type=int, default='200',
+    parser.add_argument('-g', '--games', type=int, default=200,
             help='the number of games to to play in each match (default 200)')
     parser.add_argument('-o', '--output',
                 help='file to store all playes games in (deafult games.pgn)',
                 type=str, default='games.pgn')
     parser.add_argument('-w', '--wait', action='store_true',
                         help='Wait for new nets to test')
+    parser.add_argument('-t', '--time', type=int, default=5,
+                        help='base time per game (default 5s)')
+    parser.add_argument('-i', '--increment', type=float, default=0.05,
+                        help='base time per game (default 0.05s)')
 
     args = parser.parse_args()
 
