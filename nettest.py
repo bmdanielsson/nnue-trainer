@@ -2,16 +2,17 @@ import chess
 import os
 import math
 import argparse
-import numpy as np
 import os.path
 import subprocess
 import shutil
+import time
 
 import quantize
 
 BASE_PATH='base'
 TEST_PATH='test'
 ENGINE_NAME='marvin'
+
 
 def add_engine_options(command, engine, net):
     command.append('-engine')
@@ -64,15 +65,26 @@ def run_match(args, test_net):
 
 
 def main(args):
-    # Find all .nnue files in the net folder
-    nnue_files = [f for f in os.listdir(args.net_dir)
+    net_files_set = set()
+
+    while True:
+        # Find all .bin files in the net folder
+        bin_files = [f for f in os.listdir(args.net_dir)
                        if (os.path.isfile(os.path.join(args.net_dir, f)) and
                            os.path.splitext(f)[1] == '.bin')]
+        time.sleep(5)
 
-    # Run a match with each net
-    for nnue in nnue_files:
-        path = os.path.join(args.net_dir, nnue)
-        run_match(args, path)
+        # Run a match with each new net
+        for file in bin_files:
+            if file not in net_files_set:
+                net_files_set.add(file)
+                path = os.path.join(args.net_dir, file)
+                run_match(args, path)
+
+        # If requested wait for more nets
+        if not args.wait:
+            break
+        time.sleep(60)
 
 
 if __name__ == "__main__":
@@ -87,6 +99,8 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output',
                 help='file to store all playes games in (deafult games.pgn)',
                 type=str, default='games.pgn')
+    parser.add_argument('-w', '--wait', action='store_true',
+                        help='Wait for new nets to test')
 
     args = parser.parse_args()
 
