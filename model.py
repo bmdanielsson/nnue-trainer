@@ -3,9 +3,6 @@ import struct
 from torch import nn
 import torch.nn.functional as F
 
-# The version of the export format
-EXPORT_FORMAT_VERSION = 0x00000008
-
 # Number of inputs
 NUM_SQ = 64
 NUM_PT = 12
@@ -34,31 +31,6 @@ class NNUE(nn.Module):
         l2_ = torch.clamp(self.l2(l1_), 0.0, 1.0)
         x = self.output(l2_)
         return x
-
-
-    def serialize_halfkx_layer(self, buf, layer):
-        bias = layer.bias.data.cpu()
-        buf.extend(bias.flatten().numpy().tobytes())
-        weight = self.input.weight.data.clone().cpu()
-        buf.extend(weight.transpose(0, 1).flatten().numpy().tobytes())
-
-
-    def serialize_linear_layer(self, buf, layer):
-        bias = layer.bias.data.cpu()
-        buf.extend(bias.flatten().numpy().tobytes())
-        weight = layer.weight.data.cpu()
-        buf.extend(weight.flatten().numpy().tobytes())
-
-
-    def serialize(self, buf):
-        # Write header
-        buf.extend(struct.pack('<i', EXPORT_FORMAT_VERSION))
-
-        # Write layers
-        self.serialize_halfkx_layer(buf, self.input)
-        self.serialize_linear_layer(buf, self.l1)
-        self.serialize_linear_layer(buf, self.l2)
-        self.serialize_linear_layer(buf, self.output)
 
 
 def loss_function(wdl, pred, batch):

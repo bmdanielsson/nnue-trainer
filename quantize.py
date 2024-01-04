@@ -19,6 +19,7 @@ OUTPUT_BIAS_SCALE = OUTPUT_SCALE*NNUE2SCORE
 MAX_HIDDEN_WEIGHT = MAX_QUANTIZED_ACTIVATION/HIDDEN_WEIGHT_SCALE
 MAX_OUTPUT_WEIGHT = MAX_QUANTIZED_ACTIVATION/OUTPUT_WEIGHT_SCALE
 
+NNUE_FORMAT_VERSION = 0x00000008
 
 def write_header(buf, version):
     buf.extend(struct.pack('<I', version))
@@ -29,7 +30,7 @@ def write_layer(buf, biases, weights):
     buf.extend(weights.numpy().tobytes())
 
 
-def quant_halfkx(biases, weights):
+def quant_input(biases, weights):
     biases = biases.mul(HALFKX_BIAS_SCALE).round().to(torch.int16)
     weights = weights.mul(HALFKX_WEIGHT_SCALE).round().to(torch.int16)
     return (biases, weights)
@@ -47,14 +48,7 @@ def quant_output(biases, weights):
     return (biases, weights)
 
 
-def read_version(file):
-    version = struct.unpack('<I', file.read(4))[0]
-    if version != model.EXPORT_FORMAT_VERSION:
-        raise Exception('Model format mismatch')
-    return version
-    
-
-def read_layer(file, ninputs, size):
+def extract_layer(file, ninputs, size):
     buf = numpy.fromfile(file, numpy.float32, size)
     biases = torch.from_numpy(buf.astype(numpy.float32))
     buf = numpy.fromfile(file, numpy.float32, size*ninputs)
@@ -65,24 +59,21 @@ def read_layer(file, ninputs, size):
 def quantization(source, target):
     print('Performing quantization ...')
 
-    # Read all layers
-    with open(source, 'rb') as f:
-        version = read_version(f)
-        halfkx = read_layer(f, model.NUM_INPUTS, model.L1)
-        linear1 = read_layer(f, model.L1*2, model.L2)
-        linear2 = read_layer(f, model.L2, model.L3)
-        output = read_layer(f, model.L3, 1)
+    # Load model
+    nnue = model.NNUE()
+    nnue.load_state_dict(torch.load(source, map_location=torch.device('cpu')))
+    nnue.eval()
 
     # Perform quantization
-    halfkx = quant_halfkx(halfkx[0], halfkx[1])
-    linear1 = quant_linear(linear1[0], linear1[1])
-    linear2 = quant_linear(linear2[0], linear2[1])
-    output = quant_output(output[0], output[1])
+    input = quant_input(nnue.input.weight, nnue.input.bias)
+    linear1 = quant_linear(nnue.l1.weight, nnue.l1.bias)
+    linear2 = quant_linear(nnue.l2.weight, nnue.l2.bias)
+    output = quant_output(nnue.output.weight, nnue.output.bias)
 
     # Write quantized layers
     outbuffer = bytearray()
-    write_header(outbuffer, version)
-    write_layer(outbuffer, halfkx[0], halfkx[1])
+    write_header(outbuffer, NNUE_FORMAT_VERSION)
+    write_layer(outbuffer, input[0], input[1])
     write_layer(outbuffer, linear1[0], linear1[1])
     write_layer(outbuffer, linear2[0], linear2[1])
     write_layer(outbuffer, output[0], output[1])

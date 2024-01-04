@@ -29,18 +29,12 @@ def filter_saved_models(saved_models, top_n):
 
 
 def write_model(nnue, path):
-    # Serialize the model to a buffer
-    buf = bytearray()
-    nnue.serialize(buf)
-
-    # Write the buffer
-    with open(path, 'wb') as f:
-        f.write(buf)
+    torch.save(nnue.state_dict(), path)
 
 
 def save_model(nnue, output_path, epoch, idx, val_loss):
     # Construct the full path
-    path = f'{output_path}/epoch_{epoch}_iter_{idx+1}_loss_{val_loss:.5f}.bin.tmp'
+    path = f'{output_path}/epoch_{epoch}_iter_{idx+1}_loss_{val_loss:.5f}.pt.tmp'
 
     # Save the model
     write_model(nnue, path)

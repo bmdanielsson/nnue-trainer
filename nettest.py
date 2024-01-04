@@ -71,7 +71,7 @@ def main(args):
         # Find all .bin files in the net folder
         bin_files = [f for f in os.listdir(args.net_dir)
                        if (os.path.isfile(os.path.join(args.net_dir, f)) and
-                           os.path.splitext(f)[1] == '.bin')]
+                           os.path.splitext(f)[1] == '.pt')]
         time.sleep(5)
 
         # Run a match with each new net
