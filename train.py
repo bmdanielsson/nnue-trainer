@@ -1,5 +1,5 @@
 import argparse
-import model as M
+import model
 import nnue_dataset
 import torch
 import time
@@ -61,7 +61,7 @@ def calculate_validation_loss(nnue, val_data_loader, wdl):
         for k, sample in enumerate(val_data_loader):
             us, them, white, black, outcome, score = sample
             pred = nnue(us, them, white, black)
-            loss = M.loss_function(wdl, pred, sample)
+            loss = model.loss_function(wdl, pred, sample)
             val_loss.append(loss)
   
         val_loss = torch.mean(torch.tensor(val_loss))
@@ -74,7 +74,7 @@ def train_step(nnue, sample, optimizer, wdl, epoch, idx, num_batches):
     us, them, white, black, outcome, score = sample
 
     pred = nnue(us, them, white, black)
-    loss = M.loss_function(wdl, pred, sample)
+    loss = model.loss_function(wdl, pred, sample)
     loss.backward()
     optimizer.step()
     nnue.zero_grad()
@@ -119,6 +119,8 @@ def main(args):
     print(f'Batch size: {args.batch_size}')
     print(f'WDL: {args.wdl}')
     print(f'Validation check interval: {args.val_check_interval}')
+    if args.resume:
+        print(f'Resuming training from {args.resume}')
     if args.log:
         print(f'Logs written to: {output_path}')
     print(f'Data written to: {output_path}')
@@ -134,7 +136,9 @@ def main(args):
     train_data_loader, val_data_loader = create_data_loaders(args.train, args.val, train_size, val_size, args.batch_size, main_device)
 
     # Create model
-    nnue = M.NNUE().to(main_device)
+    nnue = model.NNUE().to(main_device)
+    if args.resume:
+        nnue.load_state_dict(torch.load(args.resume))
 
     # Configure optimizer
     optimizer = torch.optim.RAdam(nnue.parameters(), lr=1e-3, betas=(.95, 0.999), eps=1e-5, weight_decay=0)
@@ -191,6 +195,8 @@ if __name__ == '__main__':
     parser.add_argument('--val-check-interval', default=2000, type=int, help='How often to check validation loss (default=2000)')
     parser.add_argument('--log', action='store_true', help='Enable logging during training')
     parser.add_argument('--top-n', default=2, type=int, help='Number of models to save for each epoch (default=2)')
+    parser.add_argument('--resume',
+                        help='Resume training from an existing snapshot')
     args = parser.parse_args()
 
     main(args)
