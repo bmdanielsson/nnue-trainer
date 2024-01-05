@@ -194,7 +194,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', default=16384, type=int, help='Number of positions per batch / per iteration (default=16384)')
     parser.add_argument('--val-check-interval', default=2000, type=int, help='How often to check validation loss (default=2000)')
     parser.add_argument('--log', action='store_true', help='Enable logging during training')
-    parser.add_argument('--top-n', default=2, type=int, help='Number of models to save for each epoch (default=2)')
+    parser.add_argument('--top-n', default=3, type=int, help='Number of models to save for each epoch (default=3)')
     parser.add_argument('--resume',
                         help='Resume training from an existing snapshot')
     args = parser.parse_args()
