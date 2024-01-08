@@ -58,10 +58,10 @@ def calculate_validation_loss(nnue, val_data_loader, wdl):
     nnue.eval()
     with torch.no_grad():
         val_loss = []
-        for k, sample in enumerate(val_data_loader):
-            us, them, white, black, outcome, score = sample
+        for k, batch in enumerate(val_data_loader):
+            us, them, white, black, outcome, score = batch
             pred = nnue(us, them, white, black)
-            loss = model.loss_function(wdl, pred, sample)
+            loss = model.loss_function(wdl, pred, batch)
             val_loss.append(loss)
   
         val_loss = torch.mean(torch.tensor(val_loss))
@@ -70,11 +70,11 @@ def calculate_validation_loss(nnue, val_data_loader, wdl):
     return val_loss
   
   
-def train_step(nnue, sample, optimizer, wdl, epoch, idx, num_batches):
-    us, them, white, black, outcome, score = sample
+def train_step(nnue, batch, optimizer, wdl, epoch, idx, num_batches):
+    us, them, white, black, outcome, score = batch
 
     pred = nnue(us, them, white, black)
-    loss = model.loss_function(wdl, pred, sample)
+    loss = model.loss_function(wdl, pred, batch)
     loss.backward()
     optimizer.step()
     nnue.zero_grad()
@@ -153,8 +153,8 @@ def main(args):
         best_val_loss = 1000000.0
         saved_models = []
 
-        for k, sample in enumerate(train_data_loader):
-            train_loss = train_step(nnue, sample, optimizer, args.wdl, epoch, k, num_batches)
+        for k, batch in enumerate(train_data_loader):
+            train_loss = train_step(nnue, batch, optimizer, args.wdl, epoch, k, num_batches)
             running_train_loss += train_loss.item()
           
             if k%args.val_check_interval == (args.val_check_interval-1):
