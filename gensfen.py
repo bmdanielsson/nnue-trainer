@@ -188,7 +188,9 @@ def play_game(writer, duplicates, hasher, pos_left, args):
         board.push(result.move)
 
     engine_white.quit()
+    engine_white.close()
     engine_black.quit()
+    engine_black.close()
 
     # Convert result to sfen representation
     if board.is_game_over(claim_draw=True):
