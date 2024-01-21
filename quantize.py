@@ -25,34 +25,31 @@ def write_header(buf, version):
     buf.extend(struct.pack('<I', version))
 
 
+def write_input(buf, biases, weights):
+    buf.extend(biases.flatten().numpy().tobytes())
+    buf.extend(weights.transpose(0, 1).flatten().numpy().tobytes())
+
+
 def write_layer(buf, biases, weights):
-    buf.extend(biases.numpy().tobytes())
-    buf.extend(weights.numpy().tobytes())
+    buf.extend(biases.flatten().numpy().tobytes())
+    buf.extend(weights.flatten().numpy().tobytes())
 
 
 def quant_input(biases, weights):
-    biases = biases.mul(HALFKX_BIAS_SCALE).round().to(torch.int16)
-    weights = weights.mul(HALFKX_WEIGHT_SCALE).round().to(torch.int16)
+    biases = biases.data.mul(HALFKX_BIAS_SCALE).round().to(torch.int16)
+    weights = weights.data.mul(HALFKX_WEIGHT_SCALE).round().to(torch.int16)
     return (biases, weights)
 
 
 def quant_linear(biases, weights):
-    biases = biases.mul(HIDDEN_BIAS_SCALE).round().to(torch.int32)
-    weights = weights.clamp(-MAX_HIDDEN_WEIGHT, MAX_HIDDEN_WEIGHT).mul(HIDDEN_WEIGHT_SCALE).round().to(torch.int8)
+    biases = biases.data.mul(HIDDEN_BIAS_SCALE).round().to(torch.int32)
+    weights = weights.data.clamp(-MAX_HIDDEN_WEIGHT, MAX_HIDDEN_WEIGHT).mul(HIDDEN_WEIGHT_SCALE).round().to(torch.int8)
     return (biases, weights)
 
 
 def quant_output(biases, weights):
-    biases = biases.mul(OUTPUT_BIAS_SCALE).round().to(torch.int32)
-    weights = weights.clamp(-MAX_OUTPUT_WEIGHT, MAX_OUTPUT_WEIGHT).mul(OUTPUT_WEIGHT_SCALE).round().to(torch.int8)
-    return (biases, weights)
-
-
-def extract_layer(file, ninputs, size):
-    buf = numpy.fromfile(file, numpy.float32, size)
-    biases = torch.from_numpy(buf.astype(numpy.float32))
-    buf = numpy.fromfile(file, numpy.float32, size*ninputs)
-    weights = torch.from_numpy(buf.astype(numpy.float32))
+    biases = biases.data.mul(OUTPUT_BIAS_SCALE).round().to(torch.int32)
+    weights = weights.data.clamp(-MAX_OUTPUT_WEIGHT, MAX_OUTPUT_WEIGHT).mul(OUTPUT_WEIGHT_SCALE).round().to(torch.int8)
     return (biases, weights)
 
 
@@ -65,15 +62,15 @@ def quantization(source, target):
     nnue.eval()
 
     # Perform quantization
-    input = quant_input(nnue.input.weight, nnue.input.bias)
-    linear1 = quant_linear(nnue.l1.weight, nnue.l1.bias)
-    linear2 = quant_linear(nnue.l2.weight, nnue.l2.bias)
-    output = quant_output(nnue.output.weight, nnue.output.bias)
+    input = quant_input(nnue.input.bias, nnue.input.weight)
+    linear1 = quant_linear(nnue.l1.bias, nnue.l1.weight)
+    linear2 = quant_linear(nnue.l2.bias, nnue.l2.weight)
+    output = quant_output(nnue.output.bias, nnue.output.weight)
 
     # Write quantized layers
     outbuffer = bytearray()
     write_header(outbuffer, NNUE_FORMAT_VERSION)
-    write_layer(outbuffer, input[0], input[1])
+    write_input(outbuffer, input[0], input[1])
     write_layer(outbuffer, linear1[0], linear1[1])
     write_layer(outbuffer, linear2[0], linear2[1])
     write_layer(outbuffer, output[0], output[1])
