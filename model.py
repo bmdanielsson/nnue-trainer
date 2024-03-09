@@ -1,7 +1,8 @@
 import torch
 import struct
+
 from torch import nn
-import torch.nn.functional as F
+
 
 # Number of inputs
 NUM_SQ = 64
@@ -31,6 +32,23 @@ class NNUE(nn.Module):
         l2_ = torch.clamp(self.l2(l1_), 0.0, 1.0)
         x = self.output(l2_)
         return x
+
+
+    def clamp_weights(self):
+        # L1
+        data = self.l1.weight.data
+        data.clamp(-127.0/64.0, 127.0/64.0)
+        self.l1.weight.data.copy_(data)
+
+        # L2
+        data = self.l2.weight.data
+        data.clamp(-127.0/64.0, 127.0/64.0)
+        self.l2.weight.data.copy_(data)
+
+        # Output
+        data = self.output.weight.data
+        data.clamp(-127.0*127.0/64.0, 127.0*127.0/64.0)
+        self.output.weight.data.copy_(data)
 
 
 def loss_function(wdl, pred, batch):
