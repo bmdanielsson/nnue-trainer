@@ -10,7 +10,7 @@ NUM_PT = 12
 NUM_INPUTS = NUM_SQ*NUM_PT
 
 # 3 layer fully connected network
-L1 = 256
+L1 = 384
 L2 = 8
 L3 = 16
 
