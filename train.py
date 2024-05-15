@@ -132,7 +132,11 @@ def main(args):
 
     # Create data loaders
     train_size = int(os.path.getsize(args.train)/BIN_SAMPLE_SIZE)
+    if args.train_size:
+        train_size = min(args.train_size, train_size)
     val_size = int(os.path.getsize(args.val)/BIN_SAMPLE_SIZE)
+    if args.val_size:
+        val_size = min(args.val_size, val_size)
     train_data_loader, val_data_loader = create_data_loaders(args.train, args.val, train_size, val_size, args.batch_size, main_device)
 
     # Create model
@@ -192,6 +196,8 @@ if __name__ == '__main__':
     parser.add_argument('val', help='Validation data (.bin)')
     parser.add_argument('--wdl', default=1.0, type=float, help='wdl=0.0 = train on evaluations, wdl=1.0 = train on game results, interpolates between (default=1.0)')
     parser.add_argument('--batch-size', default=16384, type=int, help='Number of positions per batch / per iteration (default=16384)')
+    parser.add_argument('--train-size', type=int, help='Number of training samples to use (default=all)')
+    parser.add_argument('--val-size', type=int, help='Number of validation samples to use (default=all)')
     parser.add_argument('--val-check-interval', default=2000, type=int, help='How often to check validation loss (default=2000)')
     parser.add_argument('--log', action='store_true', help='Enable logging during training')
     parser.add_argument('--top-n', default=3, type=int, help='Number of models to save for each epoch (default=3)')
